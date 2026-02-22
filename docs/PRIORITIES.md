@@ -47,11 +47,11 @@ These improvements significantly enhance usability, robustness, or developer exp
 
 ### Solver Robustness
 
-| ID | Issue | Priority | Files |
-|----|-------|----------|-------|
-| **SOL-02** | Add solver state checkpointing for restarts | HIGH | [`mp_cycle.py`](../pycycle/mp_cycle.py) |
-| **SOL-03** | Better initial guess heuristics | HIGH | [`compressor.py`](../pycycle/elements/compressor.py), [`turbine.py`](../pycycle/elements/turbine.py) |
-| **SOL-04** | Custom Newton linesearch callback | MEDIUM | [`element_base.py`](../pycycle/element_base.py) |
+| ID | Issue | Priority | Files | Status |
+|----|-------|----------|-------|--------|
+| **SOL-02** | Add solver state checkpointing for restarts | HIGH | [`mp_cycle.py`](../pycycle/mp_cycle.py) | ✅ Done |
+| **SOL-03** | Better initial guess heuristics | HIGH | [`compressor.py`](../pycycle/elements/compressor.py), [`turbine.py`](../pycycle/elements/turbine.py) | ✅ Done |
+| **SOL-04** | Custom Newton linesearch callback | MEDIUM | [`element_base.py`](../pycycle/element_base.py) | ✅ Done |
 
 ### Architecture & API
 

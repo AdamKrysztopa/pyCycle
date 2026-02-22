@@ -1,12 +1,13 @@
 
 import warnings
 
-import openmdao.api as om 
 import networkx as nx
+import numpy as np
+import openmdao.api as om
 
+from pycycle.constants import ALLOWED_THERMOS
 from pycycle.element_base import Element
 from pycycle.thermo.cea import species_data
-from pycycle.constants import ALLOWED_THERMOS
 
 
 class Cycle(om.Group): 
@@ -275,4 +276,131 @@ class MPCycle(om.Group):
                 except AttributeError: 
                     pass # no des-to-od conns defined
 
+    def _resolve_point_name(self, point_name=None):
+        if point_name is not None:
+            return point_name
 
+        if self._od_pnts:
+            return self._od_pnts[0].name
+
+        if self._des_pnt is not None:
+            return self._des_pnt.name
+
+        raise ValueError('No points have been created on this MPCycle instance.')
+
+    def checkpoint_state(self, point_name=None, include_inputs=False):
+        """
+        Capture a snapshot of solver state for a point (outputs, and optionally inputs).
+
+        Parameters
+        ----------
+        point_name : str, optional
+            Name of the point to checkpoint. Defaults to first off-design point, else design point.
+        include_inputs : bool
+            If True, include inputs as well as outputs in the checkpoint.
+        """
+        point_name = self._resolve_point_name(point_name)
+        pnt = self._get_subsystem(point_name)
+
+        outputs = pnt.list_outputs(out_stream=None, return_format='list', prom_name=False)
+        state = {
+            'point_name': point_name,
+            'outputs': {name: np.copy(meta['val']) for name, meta in outputs},
+        }
+
+        if include_inputs:
+            inputs = pnt.list_inputs(out_stream=None, return_format='list', prom_name=False)
+            state['inputs'] = {name: np.copy(meta['val']) for name, meta in inputs}
+
+        return state
+
+    def restore_state(self, state, point_name=None, include_inputs=False, strict=False):
+        """
+        Restore a previously captured solver state for a point.
+
+        Parameters
+        ----------
+        state : dict
+            Checkpoint dict returned by checkpoint_state().
+        point_name : str, optional
+            Override point name from the checkpoint.
+        include_inputs : bool
+            If True, also restore inputs contained in the checkpoint.
+        strict : bool
+            If True, raise on any set_val failure. If False, ignore missing vars.
+        """
+        if not isinstance(state, dict) or 'outputs' not in state:
+            raise ValueError('State must be a dict returned by checkpoint_state().')
+
+        point_name = self._resolve_point_name(point_name or state.get('point_name'))
+        pnt = self._get_subsystem(point_name)
+
+        def _set_vars(var_dict):
+            for name, val in var_dict.items():
+                try:
+                    pnt.set_val(name, val)
+                except Exception:
+                    if strict:
+                        raise
+
+        _set_vars(state.get('outputs', {}))
+        if include_inputs:
+            _set_vars(state.get('inputs', {}))
+
+    def solve_case_sequence(self, cases, point_name=None, prob=None, outputs=None,
+                            warm_start=True, continue_on_failure=True):
+        """
+        Run a sequence of operating points with optional warm-starting.
+
+        Parameters
+        ----------
+        cases : list of dict
+            Sequence of operating conditions: {var_name: (value, units)}.
+        point_name : str, optional
+            Which operating point to sweep. Defaults to first off-design point, else design.
+        prob : om.Problem
+            Problem instance used to execute run_model().
+        outputs : list[str], optional
+            Variables to extract after each converged case.
+        warm_start : bool
+            If True, restore previous converged state before each new case.
+        continue_on_failure : bool
+            If True, continue to next case after failure; otherwise re-raise.
+        """
+        if prob is None:
+            raise ValueError('solve_case_sequence requires an om.Problem instance via prob=...')
+
+        point_name = self._resolve_point_name(point_name)
+
+        results = []
+        last_state = None
+
+        for case in cases:
+            for var, (val, units) in case.items():
+                target = var if '.' in var else f'{point_name}.{var}'
+                if units is None:
+                    prob.set_val(target, val)
+                else:
+                    prob.set_val(target, val, units=units)
+
+            if warm_start and last_state is not None:
+                self.restore_state(last_state, point_name=point_name)
+
+            try:
+                prob.run_model()
+                last_state = self.checkpoint_state(point_name)
+
+                result = {'success': True}
+                if outputs:
+                    extracted = {}
+                    for name in outputs:
+                        out_name = name if '.' in name else f'{point_name}.{name}'
+                        extracted[name] = np.copy(prob.get_val(out_name))
+                    result['outputs'] = extracted
+                results.append(result)
+            except Exception as err:
+                results.append({'success': False, 'error': str(err)})
+                if not continue_on_failure:
+                    raise
+
+        return results

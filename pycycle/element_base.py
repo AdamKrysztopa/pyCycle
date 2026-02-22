@@ -1,7 +1,28 @@
 import openmdao.api as om
+from openmdao.solvers.linesearch.backtracking import BoundsEnforceLS
 
-from pycycle.thermo.thermo import ThermoAdd
 from pycycle.constants import ALLOWED_THERMOS
+from pycycle.thermo.thermo import ThermoAdd
+
+
+class CallbackBoundsEnforceLS(BoundsEnforceLS):
+    """
+    BoundsEnforceLS with a user callback before/after bounds enforcement.
+
+    Callback signature: callback(linesearch, phase, **kwargs)
+    where phase is 'pre' or 'post'.
+    """
+
+    def __init__(self, callback=None, **kwargs):
+        super().__init__(**kwargs)
+        self._callback = callback
+
+    def _enforce_bounds(self, step, alpha):
+        if self._callback is not None:
+            self._callback(self, 'pre', step=step, alpha=alpha)
+        super()._enforce_bounds(step, alpha)
+        if self._callback is not None:
+            self._callback(self, 'post', step=step, alpha=alpha)
 
 
 class Element(om.Group): 
@@ -24,6 +45,8 @@ class Element(om.Group):
                               desc='thermodynamic data specific to this element', recordable=False)
         self.options.declare('thermo_method', default='CEA', values=ALLOWED_THERMOS,
                               desc='Method for computing thermodynamic properties')
+        self.options.declare('linesearch_callback', default=None, recordable=False,
+                              desc='Optional callback for BoundsEnforceLS linesearch')
 
     def copy_flow(self, src_port, output_port): 
         """
@@ -51,9 +74,27 @@ class Element(om.Group):
         else: 
             self.Fl_O_data[port_name] = port_data
 
+    def configure(self):
+        callback = self.options['linesearch_callback']
+        if callback is None:
+            return
+
+        solver = self.nonlinear_solver
+        if solver is None:
+            return
+
+        linesearch = getattr(solver, 'linesearch', None)
+        if linesearch is None:
+            return
+
+        if isinstance(linesearch, BoundsEnforceLS) and not isinstance(linesearch, CallbackBoundsEnforceLS):
+            wrapped = CallbackBoundsEnforceLS(callback=callback)
+            for name in linesearch.options:
+                wrapped.options[name] = linesearch.options[name]
+            solver.linesearch = wrapped
+
 
     # TODO: at end of setup, compare all the ports to whats in the port data and make sure that there is nothing missing
-
 
 
 

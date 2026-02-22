@@ -627,6 +627,17 @@ class Turbine(Element):
                            ['pwr_turb','real_flow_b4bld', 'eff_poly_calc', 'real_flow', 'W_passthru'])
 
         self.set_input_defaults('eff', val=0.99, units=None)
+        if not designFlag:
+            self.set_input_defaults('s_PR', val=1.0)
+            self.set_input_defaults('s_Wp', val=1.0)
+            self.set_input_defaults('s_eff', val=1.0)
+            self.set_input_defaults('s_Np', val=1.0)
+
+            try:
+                self.set_input_defaults('map.NpMap', val=map_data.defaults['NpMap'], units='rpm')
+                self.set_input_defaults('map.PRmap', val=map_data.defaults['PRmap'])
+            except Exception:
+                pass
         # if not designFlag: 
         #     self.set_input_defaults('area', val=1, units='in**2')
         thermo_method = self.options['thermo_method']

@@ -446,8 +446,9 @@ class Compressor(Element):
                                ('Pt', 'Fl_I:tot:P'), ('Tt', 'Fl_I:tot:T')),
                            promotes_outputs=('Nc', 'Wc'))
 
-        map_calcs = CompressorMap(map_data=self.options['map_data'], design=design,
-                            interp_method=interp_method, extrap=map_extrap)
+        map_data = self.options['map_data']
+        map_calcs = CompressorMap(map_data=map_data, design=design,
+                             interp_method=interp_method, extrap=map_extrap)
         self.add_subsystem('map', map_calcs,
                             promotes=['s_Nc','s_eff','s_Wc','s_PR','Nc','Wc',
                                     'PR','eff','SMN','SMW'])
@@ -577,6 +578,17 @@ class Compressor(Element):
         self.set_input_defaults('Fl_I:FAR', val=0., units=None)
         self.set_input_defaults('PR', val=2., units=None)
         self.set_input_defaults('eff', val=0.99, units=None)
+        if not design:
+            self.set_input_defaults('s_PR', val=1.0)
+            self.set_input_defaults('s_Wc', val=1.0)
+            self.set_input_defaults('s_eff', val=1.0)
+            self.set_input_defaults('s_Nc', val=1.0)
+
+            try:
+                self.set_input_defaults('map.RlineMap', val=map_data.defaults['RlineMap'])
+                self.set_input_defaults('map.NcMap', val=map_data.defaults['NcMap'], units='rpm')
+            except Exception:
+                pass
 
         # if not design:
         #     self.set_input_defaults('area', val=1, units='inch**2')
