@@ -197,6 +197,34 @@ cd ../pycycle/docs
 make html
 ```
 
+## Code Quality Fix Log (2026-02)
+
+This section documents the code-quality cleanup and follow-up fixes, including how the work was split and why example execution broke temporarily.
+
+### What was wrong
+
+- The public API module [`pycycle/api.py`](../pycycle/api.py:1) was empty, so `import pycycle.api as pyc` did not expose core symbols like `Cycle`, maps, elements, and helpers. This caused example scripts (e.g. [`example_cycles/simple_turbojet.py`](../example_cycles/simple_turbojet.py:1)) to fail with `AttributeError: module 'pycycle.api' has no attribute 'Cycle'`.
+- The CEA species data module did not re-export thermo datasets, so imports like `from pycycle.thermo.cea.species_data import janaf` failed during example startup. This broke CEA-based elements via [`pycycle/thermo/cea/thermo_add.py`](../pycycle/thermo/cea/thermo_add.py:1).
+- Ruff reported a large set of unused imports/variables and bare `except` blocks across examples, tests, and core modules. Ruff auto-fix handled most of these, then remaining errors were fixed manually.
+- Pyright was run for visibility, but it reported many issues due to OpenMDAO dynamic patterns and example/test code. Per instruction, no Pyright configuration changes or error suppressions were applied.
+
+### How the work was split (conceptual commits)
+
+1. **Tooling sync**: Added `ruff` and `pyright` to the dev extras in [`pyproject.toml`](../pyproject.toml:41) and synced with `uv sync --extra dev`.
+2. **Ruff auto-fix**: Ran `ruff check . --fix` and `ruff format .` to address most F401/F841 and formatting issues.
+3. **Ruff manual fixes**: Removed remaining unused variables/imports and addressed unsafe patterns, e.g. in [`pycycle/thermo/cea/chem_eq.py`](../pycycle/thermo/cea/chem_eq.py:141) and test files under [`pycycle/elements/test`](../pycycle/elements/test/test_cfd_start.py:1).
+4. **API restoration**: Rebuilt [`pycycle/api.py`](../pycycle/api.py:1) to export elements, maps, cycle classes, constants, and viewers used by examples.
+5. **CEA dataset exports**: Re-exported `janaf`, `wet_air`, and `co2_co_o2` from [`pycycle/thermo/cea/species_data.py`](../pycycle/thermo/cea/species_data.py:1) to restore legacy import paths used by examples/tests.
+
+### Ruff/Pyright status
+
+- **Ruff**: Clean after fixes (`ruff check .` passes).
+- **Pyright**: Reported ~1200 errors across examples/tests and OpenMDAO-heavy modules; no config changes were made per instruction (see terminal output from the `uv run pyright` invocation).
+
+### Example verification
+
+- Verified: `uv run python example_cycles/simple_turbojet.py` now runs successfully after the API and species data exports were restored (see terminal output in this session).
+
 ## Version Compatibility
 
 | pyCycle | OpenMDAO | Python |
