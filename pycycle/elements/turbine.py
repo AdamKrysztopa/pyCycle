@@ -1,19 +1,16 @@
 from collections.abc import Iterable
-from copy import copy
 
 import numpy as np
-
 import openmdao.api as om
+from openmdao.api import AnalysisError
 
 from pycycle.constants import BTU_s2HP, HP_per_RPM_to_FT_LBF
-from pycycle.thermo.thermo import Thermo, ThermoAdd
-from pycycle.thermo.cea import species_data
-from pycycle.flow_in import FlowIn
-from pycycle.passthrough import PassThrough
 from pycycle.element_base import Element
-
 from pycycle.elements.turbine_map import TurbineMap
+from pycycle.flow_in import FlowIn
 from pycycle.maps.lpt2269 import LPT2269
+from pycycle.passthrough import PassThrough
+from pycycle.thermo.thermo import Thermo, ThermoAdd
 
 
 class CorrectedInputsCalc(om.ExplicitComponent):

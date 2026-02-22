@@ -1,8 +1,7 @@
 import openmdao.api as om
 
+from pycycle.maps.map_data import normalize_map_data
 from pycycle.maps.ncp01 import NCP01
-
-import numpy as np
 
 
 class StallCalcs(om.ExplicitComponent):
@@ -165,7 +164,7 @@ class CompressorMap(om.Group):
 
     def setup(self):
 
-        map_data = self.options['map_data']
+        map_data = normalize_map_data(self.options['map_data'])
         design = self.options['design']
         method = self.options['interp_method']
         extrap = self.options['extrap']

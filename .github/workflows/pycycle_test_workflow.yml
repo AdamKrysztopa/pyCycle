@@ -159,6 +159,13 @@ jobs:
           echo "RPT_FILE=$RPT_FILE" >> $GITHUB_ENV
           testflo -n 1 pycycle --timeout=240 --show_skipped --deprecations_report=$RPT_FILE --coverage --coverpkg pycycle --durations=20
 
+      - name: Upload coverage report
+        if: ${{ ! matrix.EXCLUDE }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.NAME }}
+          path: $HOME/pycycle.coverage
+
       - name: Deprecations Report
         if: ${{ ! matrix.EXCLUDE }}
         id: deprecations_report

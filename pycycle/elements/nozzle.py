@@ -1,12 +1,13 @@
 """ Class definition for Nozzle."""
 
+import numpy as np
 import openmdao.api as om
 
 from pycycle.constants import g_c
-from pycycle.thermo.cea import species_data
-from pycycle.thermo.thermo import Thermo
-from pycycle.flow_in import FlowIn
 from pycycle.element_base import Element
+from pycycle.flow_in import FlowIn
+from pycycle.thermo.thermo import Thermo
+
 
 class PR_bal(om.ImplicitComponent):
 
@@ -148,12 +149,14 @@ class Mux(om.ExplicitComponent):
                               desc='Nozzle type: CD, CV, or CD_CV.')
         self.options.declare('fl_out_name', default='Fl_O',
                               desc='Outflow station prefix.')
+        self.options.declare('choke_blend_kappa', default=50.0,
+                              desc='Sharpness of choke transition blending. Higher = sharper.')
 
     def setup(self):
         nozzType = self.options['nozzType']
         fl_out_name = self.options['fl_out_name']
 
-        if not (nozzType in ["CV", "CD", "CD_CV"]):
+        if nozzType not in ["CV", "CD", "CD_CV"]:
             msg = "nozzType must be 'CV', 'CD' or 'CD_CV', but '{}' was given.".format(nozzType)
             raise ValueError(msg)
 
@@ -195,37 +198,33 @@ class Mux(om.ExplicitComponent):
 
         self.flow_out = ['h', 'T', 'P', 'rho', 'gamma', 'Cp', 'Cv', 'V', 'Vsonic', 'MN', 'area', 'W']
 
-        self.declare_partials('*:stat:h', '*:h')
-        self.declare_partials('*:stat:T', '*:T')
-        self.declare_partials('*:stat:P', '*:P')
-        self.declare_partials('*:stat:rho', '*:rho')
-        self.declare_partials('*:stat:gamma', '*:gamma')
-        self.declare_partials('*:stat:S', 'S')
-        self.declare_partials('*:stat:Cp', '*:Cp')
-        self.declare_partials('*:stat:Cv', '*:Cv')
-        self.declare_partials('*:stat:V', '*:V')
-        self.declare_partials('*:stat:Vsonic', '*:Vsonic')
-        self.declare_partials('*:stat:MN', '*:MN')
-        self.declare_partials('*:stat:area', '*:area')
-        self.declare_partials('*:stat:W', '*:W')
+        self.declare_partials('*', '*', method='cs')
+
+    @staticmethod
+    def _blend_alpha(ps_calc, ps_choked, kappa):
+        denom = max(ps_choked, 1e-10)
+        delta = (ps_calc - ps_choked) / denom
+        return 0.5 * (1.0 + np.tanh(kappa * delta))
 
     def compute(self, inputs, outputs):
         nozzType = self.options['nozzType']
         fl_out_name = self.options['fl_out_name']
+        kappa = self.options['choke_blend_kappa']
+        alpha = self._blend_alpha(inputs['Ps_calc'], inputs['MN:P'], kappa)
+        choked_flag = 1.0 - alpha
 
         # Determine if nozzle is choked and pass appropriate flow parameters to nozzle exit
         if nozzType == "CV":
-            if inputs['Ps_calc'] < inputs['MN:P']:
-                prefix = "MN"
-            else:
-                prefix = "Ps"
-
             for p in self.flow_out:
-                outputs['Throat:stat:%s' %p] = inputs['%s:%s' %(prefix, p)]
-                outputs['%s:stat:%s' %(fl_out_name, p)] = inputs['%s:%s' %(prefix, p)]
+                mn_val = inputs['MN:%s' % p]
+                ps_val = inputs['Ps:%s' % p]
+                blend_val = alpha * ps_val + (1.0 - alpha) * mn_val
+                outputs['Throat:stat:%s' % p] = blend_val
+                outputs['%s:stat:%s' % (fl_out_name, p)] = blend_val
 
             outputs['Throat:stat:S'] = inputs['S']
             outputs['%s:stat:S' %fl_out_name] = inputs['S']
+            outputs['choked'] = choked_flag
 
         elif nozzType == "CD":
             for p in self.flow_out:
@@ -234,67 +233,19 @@ class Mux(om.ExplicitComponent):
 
             outputs['Throat:stat:S'] = inputs['S']
             outputs['%s:stat:S' %fl_out_name] = inputs['S']
+            outputs['choked'] = 1.0
 
         elif nozzType == "CD_CV":
-            if inputs['Ps_calc'] < inputs['MN:P']:
-                prefix = "MN"
-            else:
-                prefix = "Ps"
-
             for p in self.flow_out:
-                outputs['Throat:stat:%s' %p] = inputs['%s:%s' %(prefix, p)]
+                mn_val = inputs['MN:%s' % p]
+                ps_val = inputs['Ps:%s' % p]
+                blend_val = alpha * ps_val + (1.0 - alpha) * mn_val
+                outputs['Throat:stat:%s' %p] = blend_val
                 outputs['%s:stat:%s' %(fl_out_name, p)] = inputs['Ps:%s' %p]
 
             outputs['Throat:stat:S'] = inputs['S']
             outputs['%s:stat:S' %fl_out_name] = inputs['S']
-
-    def compute_partials(self, inputs, J):
-        nozzType = self.options['nozzType']
-        fl_out_name = self.options['fl_out_name']
-
-        if nozzType == "CV":
-
-            if inputs['Ps_calc'] < inputs['MN:P']:
-                prefix = "MN"
-                other = "Ps"
-            else:
-                prefix = "Ps"
-                other = "MN"
-
-            for p in self.flow_out:
-                J['Throat:stat:%s' %p, '%s:%s' %(prefix, p)] = 1.
-                J['%s:stat:%s' %(fl_out_name, p), '%s:%s' %(prefix, p)] = 1.
-
-                J['Throat:stat:%s' %p, '%s:%s' %(other, p)] = 0.
-                J['%s:stat:%s' %(fl_out_name, p), '%s:%s' %(other, p)] = 0.
-
-            J['Throat:stat:S', 'S'] = 1.
-            J['%s:stat:S' %fl_out_name, 'S'] = 1.
-
-        elif nozzType == "CD":
-            for p in self.flow_out:
-                J['Throat:stat:%s' %p, 'MN:%s' %p] = 1.0
-                J['%s:stat:%s' %(fl_out_name, p), 'Ps:%s' %p] = 1.0
-
-            J['Throat:stat:S', 'S'] = 1.0
-            J['%s:stat:S' %fl_out_name, 'S'] = 1.0
-
-        elif nozzType == "CD_CV":
-            if inputs['Ps_calc'] < inputs['MN:P']:
-                prefix = "MN"
-                other = "Ps"
-            else:
-                prefix = "Ps"
-                other = "MN"
-
-            for p in self.flow_out:
-                J['Throat:stat:%s' %p, '%s:%s' %(prefix, p)] = 1.0
-                J['%s:stat:%s' %(fl_out_name, p), 'Ps:%s' %p] = 1.0
-
-                J['Throat:stat:%s' %p, '%s:%s' %(other, p)] = 0.0
-
-            J['Throat:stat:S', 'S'] = 1.0
-            J['%s:stat:S' %fl_out_name, 'S'] = 1.0
+            outputs['choked'] = choked_flag
 
 class Nozzle(Element):
     """
@@ -307,6 +258,8 @@ class Nozzle(Element):
         self.options.declare('lossCoef', default='Cv',
                               desc='If set to "Cfg", then Gross Thrust Coefficient is an input.')
         self.options.declare('internal_solver', default=False)
+        self.options.declare('choke_blend_kappa', default=50.0,
+                              desc='Sharpness of choke transition blending. Higher = sharper.')
 
         super().initialize()
 
@@ -401,7 +354,8 @@ class Nozzle(Element):
         # self.connect('Fl_I.flow:flow_products','ideal_flow.init_prod_amounts')
 
         # Determine throat and exit flow properties based on nozzle type and exit static pressure
-        mux = Mux(nozzType=nozzType, fl_out_name='Fl_O')
+        mux = Mux(nozzType=nozzType, fl_out_name='Fl_O',
+                  choke_blend_kappa=self.options['choke_blend_kappa'])
         prom_in = [('Ps:W', 'Fl_I:stat:W'),
                    ('MN:W', 'Fl_I:stat:W'),
                    ('Ps:P', 'Ps_calc'),

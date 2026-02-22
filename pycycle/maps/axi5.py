@@ -2,7 +2,6 @@ import numpy as np
 
 from pycycle.maps.map_data import MapData
 
-
 """Python version of axi-5.map Compressor map from NPSS"""
 AXI5 = MapData()
 

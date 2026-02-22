@@ -1,6 +1,7 @@
 import openmdao.api as om
 
 from pycycle.maps.lpt2269 import LPT2269
+from pycycle.maps.map_data import normalize_map_data
 
 
 class MapScalars(om.ExplicitComponent):
@@ -108,7 +109,7 @@ class TurbineMap(om.Group):
 
     def setup(self):
 
-        map_data = self.options['map_data']
+        map_data = normalize_map_data(self.options['map_data'])
         design = self.options['design']
         method = self.options['interp_method']
         extrap = self.options['extrap']

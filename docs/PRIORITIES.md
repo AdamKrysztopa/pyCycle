@@ -10,26 +10,34 @@ These issues pose immediate risks to correctness, stability, or maintainability.
 
 ### Correctness & Stability
 
-| ID | Issue | Risk | Files |
-|----|-------|------|-------|
-| **TST-05** | Fix undefined [`AnalysisError`](../pycycle/elements/turbine.py:43) import | HIGH | [`turbine.py`](../pycycle/elements/turbine.py) |
-| **SOL-01** | Add continuation method for nozzle choke discontinuity | HIGH | [`nozzle.py`](../pycycle/elements/nozzle.py) |
-| **MAP-01** | Standardize map parameter names (Nc/Wc vs Np/Wp) | HIGH | All maps in [`pycycle/maps/`](../pycycle/maps/) |
+| ID | Issue | Risk | Files | Status |
+|----|-------|------|-------|--------|
+| **TST-05** | Fix undefined [`AnalysisError`](../pycycle/elements/turbine.py:43) import | HIGH | [`turbine.py`](../pycycle/elements/turbine.py) | ✅ Done |
+| **SOL-01** | Add continuation method for nozzle choke discontinuity | HIGH | [`nozzle.py`](../pycycle/elements/nozzle.py) | ✅ Done |
+| **MAP-01** | Standardize map parameter names (Nc/Wc vs Np/Wp) | HIGH | All maps in [`pycycle/maps/`](../pycycle/maps/) | ✅ Done |
 
 ### Test Coverage Gaps
 
-| ID | Issue | Risk | Files |
-|----|-------|------|-------|
-| **TST-01** | Add core module unit tests (mp_cycle, element_base, api) | HIGH | [`pycycle/tests/`](../pycycle/tests/) |
-| **TST-02** | Add map tests (currently zero) | HIGH | [`pycycle/maps/test/`](../pycycle/maps/test/) |
-| **TST-08** | Investigate "thermo weirdness" TODO in static tests | HIGH | [`test_thermo_total_static_*.py`](../pycycle/thermo/test/) |
+| ID | Issue | Risk | Files | Status |
+|----|-------|------|-------|--------|
+| **TST-01** | Add core module unit tests (mp_cycle, element_base, api) | HIGH | [`pycycle/tests/`](../pycycle/tests/) | ✅ Done |
+| **TST-02** | Add map tests (currently zero) | HIGH | [`pycycle/maps/test/`](../pycycle/maps/test/) | ✅ Done |
+| **TST-08** | Investigate "thermo weirdness" TODO in static tests | HIGH | [`test_thermo_total_static_*.py`](../pycycle/thermo/test/) | ⏳ Pending |
 
 ### Code Quality Basics
 
-| ID | Issue | Risk | Files |
-|----|-------|------|-------|
-| **DX-03** | Add pre-commit hooks (black, flake8, isort) | HIGH | `.pre-commit-config.yaml` |
-| **TST-06** | Enable CI coverage reporting | MEDIUM | [`.github/workflows/`](../.github/workflows/) |
+| ID | Issue | Risk | Files | Status |
+|----|-------|------|-------|--------|
+| **DX-03** | Add pre-commit hooks (black, flake8, isort) | HIGH | `.pre-commit-config.yaml` | ✅ Done |
+| **TST-06** | Enable CI coverage reporting | MEDIUM | [`.github/workflows/`](../.github/workflows/) | ✅ Done |
+
+### Example Runs (Phase 1 verification)
+
+| Example | Command | Result | Notes |
+|---------|---------|--------|-------|
+| `simple_turbojet` | `uv run python example_cycles/simple_turbojet.py` | ✅ Completed | Runtime ~1.1s; RuntimeWarnings from `static_ps_resid` sqrt in console. |
+| `single_spool_turboshaft` | `uv run python example_cycles/single_spool_turboshaft.py` | ✅ Completed | Runtime ~12.4s. |
+| `high_bypass_turbofan` | `uv run python example_cycles/high_bypass_turbofan.py` | ✅ User-verified | User reports successful run in separate console; this run was stopped locally after repeated solver bound warnings. |
 
 ---
 

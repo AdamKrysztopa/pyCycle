@@ -71,3 +71,4 @@ LPT2269.output_data.append({'name': 'WpMap', 'values': LPT2269.WpMap,
                            'default': np.mean(LPT2269.WpMap), 'units': 'lbm/s'})
 LPT2269.output_data.append({'name': 'effMap', 'values': LPT2269.effMap,
                            'default': np.mean(LPT2269.effMap), 'units': None})
+

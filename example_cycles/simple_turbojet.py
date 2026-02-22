@@ -1,5 +1,6 @@
 import sys
 
+import numpy as np
 import openmdao.api as om
 
 import pycycle.api as pyc
@@ -105,9 +106,10 @@ def viewer(prob, pt, file=sys.stdout):
     print a report of all the relevant cycle properties
     """
 
-    summary_data = (prob[pt+'.fc.Fl_O:stat:MN'], prob[pt+'.fc.alt'], prob[pt+'.inlet.Fl_O:stat:W'], 
+    summary_data = tuple(float(np.atleast_1d(val).ravel()[0]) for val in (
+                    prob[pt+'.fc.Fl_O:stat:MN'], prob[pt+'.fc.alt'], prob[pt+'.inlet.Fl_O:stat:W'], 
                     prob[pt+'.perf.Fn'], prob[pt+'.perf.Fg'], prob[pt+'.inlet.F_ram'],
-                    prob[pt+'.perf.OPR'], prob[pt+'.perf.TSFC'])
+                    prob[pt+'.perf.OPR'], prob[pt+'.perf.TSFC']))
 
     print(file=file, flush=True)
     print(file=file, flush=True)
@@ -244,7 +246,7 @@ if __name__ == "__main__":
     for pt in ['DESIGN']+mp_turbojet.od_pts:
         viewer(prob, pt)
 
-    map_plots(prob,'DESIGN')
+    # map_plots(prob,'DESIGN')
 
     print()
     print("time", time.time() - st)
