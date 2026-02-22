@@ -94,8 +94,8 @@ class PropsRHS(ExplicitComponent):
 
         # rhs for P
         outputs['rhs_P'][:num_element] = b0
-        n_moles = float(np.atleast_1d(inputs['n_moles']).ravel()[0])
-        outputs['rhs_P'][num_element] = n_moles
+        n_moles = np.asarray(inputs['n_moles']).reshape(-1)[0].item()
+        outputs['rhs_P'][num_element] = float(n_moles)
 
         # rhs for T
         self.H0_T = H0_T = thermo.H0(T)

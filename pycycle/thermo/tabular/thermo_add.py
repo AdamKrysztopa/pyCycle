@@ -88,10 +88,10 @@ class ThermoAdd(om.ExplicitComponent):
 
         mix_mode = self.options['mix_mode']
 
-        compo_in = inputs['Fl_I:tot:composition']
-        W_in = np.atleast_1d(inputs['Fl_I:stat:W']).ravel()[0].item()
+        compo_in = np.asarray(inputs['Fl_I:tot:composition'], dtype=float)
+        W_in = float(np.atleast_1d(inputs['Fl_I:stat:W']).ravel()[0])
         # composition vector is always given as vector of <something>-to-air ratios
-        W_air_in = W_in/(1+np.sum(compo_in))
+        W_air_in = W_in / (1 + np.sum(compo_in))
         W_other_in = W_air_in * compo_in
 
         W_out = 0 
