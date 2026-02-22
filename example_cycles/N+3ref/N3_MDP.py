@@ -1,13 +1,9 @@
-import numpy as np
 import time
-import pickle
-from pprint import pprint
 
 import openmdao.api as om
 
-import pycycle.api as pyc
 
-from N3ref import N3, viewer, MPN3
+from N3ref import viewer, MPN3
 
 def N3_MDP_model():
 

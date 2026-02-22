@@ -1,7 +1,5 @@
 import sys
 
-import numpy as np
-
 import openmdao.api as om
 
 import pycycle.api as pyc
@@ -237,14 +235,8 @@ def viewer(prob, pt, file=sys.stdout):
 
     if pt == 'DESIGN':
         MN = prob['DESIGN.fc.Fl_O:stat:MN']
-        LPT_PR = prob['DESIGN.balance.lpt_PR']
-        HPT_PR = prob['DESIGN.balance.hpt_PR']
-        FAR = prob['DESIGN.balance.FAR']
     else:
         MN = prob[pt+'.fc.Fl_O:stat:MN']
-        LPT_PR = prob[pt+'.lpt.PR']
-        HPT_PR = prob[pt+'.hpt.PR']
-        FAR = prob[pt+'.balance.FAR']
 
     summary_data = (MN[0], prob[pt+'.fc.alt'][0], prob[pt+'.inlet.Fl_O:stat:W'][0], prob[pt+'.perf.Fn'][0],
                         prob[pt+'.perf.Fg'][0], prob[pt+'.inlet.F_ram'][0], prob[pt+'.perf.OPR'][0],

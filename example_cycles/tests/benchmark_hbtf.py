@@ -1,9 +1,7 @@
-import numpy as np
 import unittest
-import os
 
+import numpy as np
 import openmdao.api as om
-import pycycle.api as pyc
 from openmdao.utils.assert_utils import assert_near_equal
 
 from example_cycles.high_bypass_turbofan import MPhbtf
@@ -15,7 +13,7 @@ class HBTFTestCase(unittest.TestCase):
 
         self.prob = om.Problem()
 
-        self.prob.model = mp_hbtf = MPhbtf()
+        self.prob.model = MPhbtf()
         self.prob.setup()
 
         self.prob.set_val('DESIGN.fan.PR', 1.685)

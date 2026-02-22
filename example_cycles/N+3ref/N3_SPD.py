@@ -1,19 +1,15 @@
-import numpy as np
 import time
-import pickle
-from pprint import pprint
 
 import openmdao.api as om
 from openmdao.utils.general_utils import set_pyoptsparse_opt
 
-import pycycle.api as pyc
 
-from N3ref import N3, viewer, MPN3
+from N3ref import viewer, MPN3
 
 # check that pyoptsparse is installed
 OPT, OPTIMIZER = set_pyoptsparse_opt('SNOPT')
 if OPTIMIZER:
-    from openmdao.drivers.pyoptsparse_driver import pyOptSparseDriver
+    pass
 
 
 def N3_SPD_model():

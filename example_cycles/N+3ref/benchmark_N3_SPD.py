@@ -1,12 +1,8 @@
-import numpy as np
 import unittest
-import os
 
-import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.utils.general_utils import set_pyoptsparse_opt
 
-import pycycle.api as pyc
 
 from N3_SPD import N3_SPD_model
 

@@ -1,11 +1,7 @@
-import numpy as np
 import unittest
-import os
 
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
-
-import pycycle.api as pyc
 
 from example_cycles.electric_propulsor import MPpropulsor
 
@@ -17,7 +13,7 @@ class ElectricPropulsorTestCase(unittest.TestCase):
 
         prob = om.Problem()
 
-        prob.model = mp_propulsor = MPpropulsor()
+        prob.model = MPpropulsor()
 
         prob.set_solver_print(level=-1)
         prob.set_solver_print(level=2, depth=2)

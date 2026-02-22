@@ -1,15 +1,11 @@
-import numpy as np
 import time
 import pickle
 from pprint import pprint
 
-from openmdao.api import DirectSolver, BoundsEnforceLS, NewtonSolver, ArmijoGoldsteinLS, LinearBlockGS, pyOptSparseDriver
-from openmdao.api import Problem, IndepVarComp, SqliteRecorder, CaseReader, BalanceComp, ScipyKrylov, PETScKrylov, ExecComp
-from openmdao.utils.units import convert_units as cu
+from openmdao.api import Problem, BalanceComp
 
-import pycycle.api as pyc
 
-from N3ref import N3, viewer, MPN3
+from N3ref import viewer, MPN3
 
 def N3_MDP_verif_model(OD_statics=True):
 

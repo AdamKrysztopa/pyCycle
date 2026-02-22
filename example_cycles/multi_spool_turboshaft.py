@@ -1,5 +1,4 @@
 import sys
-import numpy as np
 
 import openmdao.api as om
 
@@ -300,8 +299,6 @@ class MPMultiSpool(pyc.MPCycle):
 if __name__ == "__main__":
 
     import time
-    from openmdao.api import Problem
-    from openmdao.utils.units import convert_units as cu
 
     prob = om.Problem()
 

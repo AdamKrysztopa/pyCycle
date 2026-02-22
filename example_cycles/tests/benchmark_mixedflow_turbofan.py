@@ -1,22 +1,20 @@
-import numpy as np
 import unittest
-import os
 
-from openmdao.api import Problem, Group
-import pycycle.api as pyc
+from openmdao.api import Problem
 from openmdao.utils.assert_utils import assert_near_equal
 
 from example_cycles.mixedflow_turbofan import MPMixedFlowTurbofan
+
 
 class MixedFlowTurbofanTestCase(unittest.TestCase):
 
     def setUp(self):
 
-        self.prob = prob = Problem()
+        self.prob = Problem()
 
-        self.prob.model = mp_mixedflow = MPMixedFlowTurbofan()
+        self.prob.model = MPMixedFlowTurbofan()
 
-        prob.setup(check=False)
+        self.prob.setup(check=False)
 
         #design variables
         self.prob.set_val('DESIGN.fc.alt', 35000., units='ft') #DV
@@ -41,8 +39,6 @@ class MixedFlowTurbofanTestCase(unittest.TestCase):
 
     def benchmark_case1(self):
         ''' Runs the design point and an off design point to make sure they match perfectly '''
-        prob = self.prob
-
         # initial guesses
         self.prob['DESIGN.balance.FAR_core'] = 0.025
         self.prob['DESIGN.balance.FAR_ab'] = 0.025
@@ -127,4 +123,3 @@ class MixedFlowTurbofanTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

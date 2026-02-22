@@ -101,7 +101,7 @@ class MPWetPropulsor(pyc.MPCycle):
 
     def setup(self):
 
-        design = self.pyc_add_pnt('design', WetPropulsor(design=True, thermo_method='CEA'))
+        self.pyc_add_pnt('design', WetPropulsor(design=True, thermo_method='CEA'))
 
         self.set_input_defaults('design.fc.alt', 10000., units="m")
         self.set_input_defaults('design.fc.MN', .72)
@@ -134,8 +134,6 @@ if __name__ == "__main__":
     import numpy as np
     np.set_printoptions(precision=5)
 
-    from openmdao.api import Problem
-    from openmdao.utils.units import convert_units as cu
 
     prob = om.Problem()
     prob.model = mp_wet_propulsor = MPWetPropulsor()

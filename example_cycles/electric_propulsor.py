@@ -4,10 +4,9 @@ import pycycle.api as pyc
 
 # protection incase env doesn't have matplotlib installed, since its not strictly required
 try:
-    import matplotlib
     import matplotlib.pyplot as plt
 except ImportError:
-  plt = None
+    plt = None
 
 
 class Propulsor(pyc.Cycle):
@@ -23,7 +22,6 @@ class Propulsor(pyc.Cycle):
         else:
             self.options['thermo_method'] = 'CEA'
             self.options['thermo_data'] = pyc.species_data.janaf
-            FUEL_TYPE = 'JP-7'
 
 
         self.add_subsystem('fc', pyc.FlightConditions())
@@ -119,7 +117,7 @@ class MPpropulsor(pyc.MPCycle):
 
     def setup(self):
 
-        design = self.pyc_add_pnt('design', Propulsor(design=True, thermo_method='CEA'))
+        self.pyc_add_pnt('design', Propulsor(design=True, thermo_method='CEA'))
         self.pyc_add_cycle_param('pwr_target', 100.)
 
         # define the off-design conditions we want to run
@@ -145,7 +143,6 @@ class MPpropulsor(pyc.MPCycle):
 if __name__ == "__main__":
     import time
 
-    import numpy as np
 
     prob = om.Problem()
 
