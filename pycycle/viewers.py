@@ -4,10 +4,9 @@ import numpy as np
 
 # protection incase env doesn't have matplotlib installed, since its not strictly required
 try:
-    import matplotlib
     import matplotlib.pyplot as plt
 except ImportError:
-  plt = None
+    plt = None
 
 
 def get_val(prob, point, element, var_name, units=None):
@@ -376,4 +375,3 @@ def plot_turbine_maps(prob, element_names, eff_vals=np.array([0,0.5,0.55,0.6,0.6
           plt.title(e_name)
           # plt.show()
           plt.savefig(e_name+'.pdf')
-

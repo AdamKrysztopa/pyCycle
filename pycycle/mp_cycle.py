@@ -1,4 +1,3 @@
-from collections import namedtuple
 
 import warnings
 
@@ -45,7 +44,7 @@ class Cycle(om.Group):
         """
 
         warnings.simplefilter('always', DeprecationWarning)
-        warnings.warn(f"Deprecation warning: `pyc_add_element` function is deprecated because it is no longer needed. " 
+        warnings.warn("Deprecation warning: `pyc_add_element` function is deprecated because it is no longer needed. " 
                        "Use the `add_subsystem` method." )
         warnings.simplefilter('ignore', DeprecationWarning)
 

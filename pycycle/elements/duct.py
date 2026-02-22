@@ -1,10 +1,8 @@
 """ Class definition for a Duct."""
 
-import numpy as np
 
 import openmdao.api as om 
 
-from pycycle.thermo.cea import species_data
 from pycycle.thermo.thermo import Thermo
 from pycycle.flow_in import FlowIn
 from pycycle.passthrough import PassThrough

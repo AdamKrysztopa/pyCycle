@@ -3,13 +3,10 @@
 import openmdao.api as om
 
 from pycycle.constants import g_c
-
-from pycycle.thermo.cea import species_data
-from pycycle.thermo.thermo import Thermo
-
+from pycycle.element_base import Element
 from pycycle.flow_in import FlowIn
 from pycycle.passthrough import PassThrough
-from pycycle.element_base import Element
+from pycycle.thermo.thermo import Thermo
 
 #from pycycle.elements.test.util import regression_generator
 
@@ -211,9 +208,6 @@ class Inlet(Element):
         super().setup()
         
     def pyc_setup_thermo(self, upstream):
-        elements = self.options['elements']
-        
         self.Fl_O_data = {
             'Fl_O': upstream['Fl_I']
         }
-

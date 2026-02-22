@@ -1,18 +1,16 @@
-import numpy as np
-from collections.abc import Iterable
 import itertools
+from collections.abc import Iterable
 
+import numpy as np
 import openmdao.api as om
 
-from pycycle.thermo.cea import species_data
-from pycycle.thermo.thermo import Thermo
-from pycycle.flow_in import FlowIn
-from pycycle.passthrough import PassThrough
-from pycycle.constants import BTU_s2HP, HP_per_RPM_to_FT_LBF, T_STDeng, P_STDeng
-from pycycle.elements.compressor_map import CompressorMap
-from pycycle.maps.ncp01 import NCP01
+from pycycle.constants import BTU_s2HP, HP_per_RPM_to_FT_LBF, P_STDeng, T_STDeng
 from pycycle.element_base import Element
-
+from pycycle.elements.compressor_map import CompressorMap
+from pycycle.flow_in import FlowIn
+from pycycle.maps.ncp01 import NCP01
+from pycycle.passthrough import PassThrough
+from pycycle.thermo.thermo import Thermo
 
 
 class CorrectedInputsCalc(om.ExplicitComponent):
@@ -420,7 +418,6 @@ class Compressor(Element):
 
     def setup(self):
 
-        map_data = self.options['map_data']
         interp_method = self.options['map_interp_method']
         map_extrap = self.options['map_extrap']
         # self.linear_solver = ScipyGMRES()
@@ -585,4 +582,3 @@ class Compressor(Element):
         #     self.set_input_defaults('area', val=1, units='inch**2')
 
         super().setup()
-

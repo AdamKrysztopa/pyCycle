@@ -1,13 +1,10 @@
 import numpy as np
-
 import openmdao.api as om
 
-from pycycle.constants import P_REF, R_UNIVERSAL_ENG, MIN_VALID_CONCENTRATION, CEA_AIR_COMPOSITION
-
+from pycycle.constants import CEA_AIR_COMPOSITION, MIN_VALID_CONCENTRATION, P_REF
 from pycycle.thermo.cea import species_data
-from pycycle.thermo.cea.props_rhs import PropsRHS
 from pycycle.thermo.cea.props_calcs import PropsCalcs
-
+from pycycle.thermo.cea.props_rhs import PropsRHS
 
 
 class ThermoCalcs(om.Group):
@@ -154,8 +151,8 @@ class ChemEq(om.ImplicitComponent):
         try:
             self.H0_T = H0_T = thermo.H0(T)
             self.S0_T = S0_T = thermo.S0(T)
-        except:
-            raise AnalysisError('Bad Temp')
+        except (ValueError, FloatingPointError) as exc:
+            raise om.AnalysisError('Bad Temp') from exc
             # T[:] = 500.
             # self.H0_T = H0_T = thermo.H0(T)
             # self.S0_T = S0_T = thermo.S0(T)
@@ -165,7 +162,7 @@ class ChemEq(om.ImplicitComponent):
         old = np.seterr(all='raise')
         try:
             self.mu = H0_T - S0_T + np.log(n) + np.log(P) - np.log(n_moles)
-        except:
+        except FloatingPointError:
             print('ChemEQ error in: ', self.pathname)
             print('n', n)
             print('P', P)
@@ -350,7 +347,6 @@ class SetTotalTP(om.Group):
         self.add_subsystem('chem_eq', ChemEq(thermo=self.thermo), promotes=['*'])
 
         self.add_subsystem('props', ThermoCalcs(thermo=self.thermo), promotes=['*'])
-
 
 
 

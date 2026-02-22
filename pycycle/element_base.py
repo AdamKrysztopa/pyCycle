@@ -1,8 +1,6 @@
-import numpy as np
 import openmdao.api as om
 
-from pycycle.flow_in import FlowIn
-from pycycle.thermo.thermo import Thermo, ThermoAdd
+from pycycle.thermo.thermo import ThermoAdd
 from pycycle.constants import ALLOWED_THERMOS
 
 

@@ -2,6 +2,7 @@ import openmdao.api as om
 
 from pycycle.elements.US1976 import USatm1976Comp
 
+
 class DeltaTs(om.ExplicitComponent):
     """Computes temperature based on delta from atmospheric"""
 
@@ -26,7 +27,7 @@ class Ambient(om.Group):
     """Determines pressure, temperature and density base on altitude from an input standard atmosphere table"""
 
     def setup(self):
-        readAtm = self.add_subsystem('readAtmTable', USatm1976Comp(), promotes=('alt', 'Ps', 'rhos'))
+        self.add_subsystem('readAtmTable', USatm1976Comp(), promotes=('alt', 'Ps', 'rhos'))
 
         self.add_subsystem('dTs', DeltaTs(), promotes=('dTs', 'Ts'))
         self.connect('readAtmTable.Ts', 'dTs.Ts_in')

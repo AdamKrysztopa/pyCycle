@@ -2,7 +2,6 @@ import numpy as np
 
 from openmdao.api import ExplicitComponent
 
-from pycycle.constants import R_UNIVERSAL_SI
 
 class PsCalc(ExplicitComponent):
     """Mach number, Area calculation for when Ps is known"""

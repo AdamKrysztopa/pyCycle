@@ -1,11 +1,9 @@
 """ Class definition for a BleedOut."""
 
-import numpy as np
 from collections.abc import Iterable
 
 import openmdao.api as om 
 
-from pycycle.thermo.cea import species_data
 from pycycle.thermo.thermo import Thermo
 from pycycle.flow_in import FlowIn
 from pycycle.passthrough import PassThrough

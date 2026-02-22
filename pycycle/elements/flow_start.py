@@ -1,8 +1,5 @@
-import numpy as np
 
-from openmdao.api import Group, ExplicitComponent
 
-from pycycle.thermo.cea import species_data
 from pycycle.thermo.thermo import Thermo, ThermoAdd
 from pycycle.constants import THERMO_DEFAULT_COMPOSITIONS
 from pycycle.element_base import Element

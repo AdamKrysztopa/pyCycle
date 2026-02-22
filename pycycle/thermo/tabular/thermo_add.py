@@ -29,8 +29,6 @@ class ThermoAdd(om.ExplicitComponent):
 
     def output_port_data(self):
 
-        spec = self.options['spec']
-        
         inflow_composition = self.options['inflow_composition']
         if inflow_composition is None: 
             inflow_composition = TAB_AIR_FUEL_COMPOSITION
@@ -45,7 +43,6 @@ class ThermoAdd(om.ExplicitComponent):
 
     def setup(self):
 
-        spec = self.options['spec']
         mix_mode = self.options['mix_mode']
         mix_names = self.options['mix_names']
 
@@ -92,9 +89,6 @@ class ThermoAdd(om.ExplicitComponent):
         mix_mode = self.options['mix_mode']
 
         compo_in = inputs['Fl_I:tot:composition']
-        n_compo = len(compo_in)
-
-
         W_in = np.atleast_1d(inputs['Fl_I:stat:W']).ravel()[0].item()
         # composition vector is always given as vector of <something>-to-air ratios
         W_air_in = W_in/(1+np.sum(compo_in))

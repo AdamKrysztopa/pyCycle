@@ -1,19 +1,13 @@
 """ Class definition for Combustor."""
 
-import numpy as np
 
 import openmdao.api as om
 
-from pycycle.thermo.thermo import Thermo, ThermoAdd
-
-from pycycle.thermo.cea.species_data import Properties, janaf
-
+from pycycle.element_base import Element
 from pycycle.elements.duct import PressureLoss
-
 from pycycle.flow_in import FlowIn
 from pycycle.passthrough import PassThrough
-from pycycle.element_base import Element
-
+from pycycle.thermo.thermo import Thermo, ThermoAdd
 
 
 class Combustor(Element):
@@ -88,7 +82,6 @@ class Combustor(Element):
         thermo_method = self.options['thermo_method']
         thermo_data = self.options['thermo_data']
 
-        inflow_composition = self.Fl_I_data['Fl_I']
         air_fuel_composition = self.Fl_O_data['Fl_O']
         design = self.options['design']
         statics = self.options['statics']
@@ -165,7 +158,7 @@ if __name__ == "__main__":
 
     p = om.Problem()
     p.model = om.Group()
-    p.model.add_subsystem('comp', MixFuel(), promotes=['*'])
+    p.model.add_subsystem('comp', ThermoAdd(), promotes=['*'])
 
     p.model.add_subsystem('d1', om.IndepVarComp('Fl_I:stat:W', val=1.0, units='lbm/s', desc='weight flow'),
                           promotes=['*'])

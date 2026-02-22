@@ -1,6 +1,4 @@
-import numpy as np
 
-from collections import OrderedDict
 
 from pycycle.thermo.cea.thermo_data import janaf
 

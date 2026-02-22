@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 # This file is execfile()d with the current directory set to its
 # containing dir.
-import sys
-import os
 import importlib
-import textwrap
+import os
+import sys
 
-from numpydoc.docscrape import NumpyDocString, Reader
 from mock import Mock
-
-from openmdao.docs.config_params import MOCK_MODULES
 from openmdao.docs._utils.patch import do_monkeypatch
-from openmdao.docs._utils.upload_doc_version import get_doc_version
+from openmdao.docs.config_params import MOCK_MODULES
+
+import pycycle
 
 # Only mock the ones that don't import.
 for mod_name in MOCK_MODULES:
@@ -71,7 +69,6 @@ author = u'Eric S. Hendricks'
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
-import pycycle
 version = pycycle.__version__
 # The full version, including alpha/beta/rc tags.
 release = pycycle.__version__ + ' Beta'

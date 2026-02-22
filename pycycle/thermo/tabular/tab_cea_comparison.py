@@ -1,8 +1,6 @@
 import numpy as np
 import openmdao.api as om
-import pickle
 
-from pycycle.thermo.cea import chem_eq as cea_thermo
 from pycycle.thermo.tabular import tabular_thermo as tab_thermo
 from pycycle.thermo.tabular import tab_thermo_gen as tab_thermo_gen
 from pycycle.thermo.cea.species_data import janaf

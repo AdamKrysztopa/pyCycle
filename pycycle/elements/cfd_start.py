@@ -1,7 +1,6 @@
 import openmdao.api as om
 
 from pycycle.constants import THERMO_DEFAULT_COMPOSITIONS
-from pycycle.thermo.cea import species_data
 from pycycle.elements.flow_start import FlowStart
 from pycycle.element_base import Element
 

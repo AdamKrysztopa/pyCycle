@@ -145,9 +145,6 @@ class PropsCalcs(ExplicitComponent):
         dCp0_dT = thermo.Cp0_applyJ(T, 1.)
         sum_nj_R = n_moles*R_UNIVERSAL_SI
 
-        drho_dT = P/(sum_nj_R*T**2)*100
-        drho_dnmoles = -P/(n_moles**2*R_UNIVERSAL_SI*T)*100
-
         dCpe_dT = 2*np.sum(nj*H0_T*dH0_dT)
         # for i in range(num_element):
         #     self.dCpe_dT -= np.sum(aij[i]*nj*self.dH0_dT)*self.result_T[i]

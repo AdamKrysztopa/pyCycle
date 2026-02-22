@@ -1,9 +1,9 @@
 import numpy as np
+import openmdao.api as om
 from scipy.optimize import fsolve
 
-import openmdao.api as om
-
 from pycycle.constants import R_UNIVERSAL_SI
+
 
 class PsResid(om.ImplicitComponent):
     """Actual implicit relationship for when Mach number is specified"""
@@ -105,12 +105,12 @@ class PsResid(om.ImplicitComponent):
 
     def _compute_outputs_MN(self, i):
 
-        Vsonic = (i['gamma']*i['R']*i['Ts'])**0.5
         old = np.seterr(all='raise')
         try:
             Vsonic = (i['gamma']*i['R']*i['Ts'])**0.5
-        except:
+        except FloatingPointError:
             print(self.pathname, i['gamma'], i['R'], i['Ts'])
+            raise
         finally:
             np.seterr(**old)
 
@@ -136,7 +136,7 @@ class PsResid(om.ImplicitComponent):
             old = np.seterr(all='raise')
             try:
                 MN = i['W']/(i['rho']*Vsonic*i['area'])
-            except:
+            except FloatingPointError:
                 print("MN_calc", self.pathname, i['W'], i['rho'], Vsonic, i['area'])
                 MN = 5.
             finally:

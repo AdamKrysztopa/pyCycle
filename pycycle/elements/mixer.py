@@ -1,9 +1,7 @@
-import numpy as np
 import openmdao.api as om
 
 from pycycle.thermo.thermo import Thermo, ThermoAdd
 
-from pycycle.thermo.cea.species_data import janaf
 from pycycle.flow_in import FlowIn
 from pycycle.element_base import Element
 

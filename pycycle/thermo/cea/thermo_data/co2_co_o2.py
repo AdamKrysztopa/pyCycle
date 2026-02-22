@@ -1,6 +1,5 @@
 """CO2, CO, O2 reactants, used for testing and development, a subset of the janaf thermo fit set"""
 
-import numpy as np
 from collections import OrderedDict
 
 

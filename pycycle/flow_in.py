@@ -1,6 +1,5 @@
 """ FlowIN component which serves as an input flowstation for cycle components.
 """
-import numpy as np
 
 import openmdao.api as om 
 
