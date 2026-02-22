@@ -1,13 +1,10 @@
 """ Tests the duct component. """
 
 import unittest
-import os
 
-import numpy as np
 
-import openmdao.api as om
 
-from openmdao.api import Problem, Group
+from openmdao.api import Problem
 
 from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
 
@@ -15,7 +12,6 @@ from pycycle.constants import CEA_AIR_COMPOSITION, CEA_AIR_FUEL_COMPOSITION
 from pycycle.mp_cycle import Cycle
 from pycycle.elements.mixer import Mixer
 from pycycle.elements.flow_start import FlowStart
-from pycycle.connect_flow import connect_flow
 from pycycle.thermo.cea.species_data import janaf
 
 

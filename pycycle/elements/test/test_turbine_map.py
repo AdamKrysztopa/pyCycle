@@ -3,7 +3,6 @@ import unittest
 import os
 
 from openmdao.api import Problem
-from openmdao.api import DirectSolver, BoundsEnforceLS, NewtonSolver
 from openmdao.utils.assert_utils import assert_near_equal
 
 from pycycle.elements.turbine_map import TurbineMap

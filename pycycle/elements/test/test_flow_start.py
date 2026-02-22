@@ -2,10 +2,10 @@ import numpy as np
 import unittest
 import os
 
-from openmdao.api import Problem, Group
+from openmdao.api import Problem
 from openmdao.utils.assert_utils import assert_near_equal
 
-from pycycle.api import (Cycle, FlowStart, CEA_AIR_COMPOSITION,
+from pycycle.api import (FlowStart, CEA_AIR_COMPOSITION,
                          CEA_WET_AIR_COMPOSITION, species_data, AIR_JETA_TAB_SPEC,
                          TAB_AIR_FUEL_COMPOSITION)
 

@@ -1,10 +1,8 @@
 import unittest
 
 import numpy as np
-
 import openmdao.api as om
-
-from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
+from openmdao.utils.assert_utils import assert_near_equal
 
 from pycycle.thermo.tabular.thermo_add import ThermoAdd
 
@@ -34,7 +32,6 @@ class ThermoAddTestCase(unittest.TestCase):
         W_fuel_in = W_air_in * p['Fl_I:tot:composition']
 
         W_fuel_mix = W_air_in * p['fuel:ratio']
-        W_out = W_air_in+W_fuel_in+W_fuel_mix
         assert_near_equal(p['Wout'], p['Fl_I:stat:W']+W_fuel_mix, tolerance=tol)
 
         mass_avg_h=(p['Fl_I:tot:h']*p['Fl_I:stat:W'])/p['Wout']
@@ -211,8 +208,6 @@ class ThermoAddTestCase(unittest.TestCase):
         W_fuel_in = W_air_in * p['Fl_I:tot:composition'][0]
 
         W_fuel_mix = W_air_in * p['fuel1:ratio']
-        W_out = p['Fl_I:stat:W']+W_fuel_mix
-
         tol = 1e-6
         assert_near_equal(p['Wout'], p['Fl_I:stat:W']+W_fuel_mix, tolerance=tol)
 
@@ -249,8 +244,6 @@ class ThermoAddTestCase(unittest.TestCase):
         W_water_in = W_air_in * p['Fl_I:tot:composition'][1]
 
         W_water_mix = W_air_in * p['water1:ratio']
-        W_out = p['Fl_I:stat:W']+W_water_mix
-
         tol = 1e-6
         assert_near_equal(p['Wout'], p['Fl_I:stat:W']+W_water_mix, tolerance=tol)
 

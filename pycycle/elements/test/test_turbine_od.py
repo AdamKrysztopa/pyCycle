@@ -2,7 +2,7 @@ import numpy as np
 import unittest
 import os
 
-from openmdao.api import Problem, Group
+from openmdao.api import Problem
 from openmdao.utils.assert_utils import assert_near_equal
 
 from pycycle.mp_cycle import Cycle

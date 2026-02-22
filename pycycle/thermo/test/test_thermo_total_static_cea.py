@@ -1,15 +1,13 @@
-import unittest
 import os
+import unittest
 
 import numpy as np
-
 import openmdao.api as om
-
 from openmdao.utils.assert_utils import assert_near_equal
 
-from pycycle.thermo.thermo import Thermo
-from pycycle.thermo.cea import species_data
 from pycycle import constants
+from pycycle.thermo.cea import species_data
+from pycycle.thermo.thermo import Thermo
 
 
 class SetTotalSimpleTestCase(unittest.TestCase):
@@ -76,9 +74,6 @@ class SetTotalSimpleTestCase(unittest.TestCase):
                          thermo_kwargs={'composition': constants.CEA_CO2_CO_O2_COMPOSITION, 
                                         'spec': species_data.co2_co_o2 }) 
        
-        r = p.model
-
-
         p.setup(check=False)
 
         # NOTE: This case is very touchy and requires weird solver settings

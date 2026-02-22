@@ -1,6 +1,4 @@
-import numpy as np
 import unittest
-import os
 
 from openmdao.api import Problem
 from openmdao.utils.assert_utils import assert_check_partials

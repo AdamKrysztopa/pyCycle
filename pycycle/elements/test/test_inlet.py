@@ -1,19 +1,16 @@
 """ Tests the inlet component. """
 
-import unittest
 import os
+import unittest
 
 import numpy as np
+from openmdao.api import Problem
+from openmdao.utils.assert_utils import assert_check_partials, assert_near_equal
 
-from openmdao.api import Problem, Group
-from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
-
+from pycycle.elements.flow_start import FlowStart
+from pycycle.elements.inlet import Inlet, MilSpecRecovery
 from pycycle.mp_cycle import Cycle
 from pycycle.thermo.cea.species_data import janaf
-from pycycle.elements.inlet import Inlet, MilSpecRecovery
-from pycycle.elements.flow_start import FlowStart
-from pycycle.constants import AIR_JETA_TAB_SPEC, TAB_AIR_FUEL_COMPOSITION
-
 
 fpath = os.path.dirname(os.path.realpath(__file__))
 ref_data = np.loadtxt(fpath + "/reg_data/inlet.csv", delimiter=",", skiprows=1)
@@ -105,8 +102,6 @@ class InletTestCase(unittest.TestCase):
         cycle.add_subsystem('inlet', Inlet())
 
         # total and static
-        fl_src = "flow_start.Fl_O"
-        fl_target = "inlet.Fl_I"
         cycle.pyc_connect_flow("flow_start.Fl_O", "inlet.Fl_I")
 
         self.prob.set_solver_print(level=-1)

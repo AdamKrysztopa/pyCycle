@@ -1,14 +1,13 @@
-import numpy as np
-import unittest
 import os
+import unittest
 
+import numpy as np
 import openmdao.api as om
-from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
+from openmdao.utils.assert_utils import assert_near_equal
 
-from pycycle.thermo.cea.species_data import janaf
 from pycycle.elements.flight_conditions import FlightConditions
 from pycycle.mp_cycle import Cycle
-
+from pycycle.thermo.cea.species_data import janaf
 
 fpath = os.path.dirname(os.path.realpath(__file__))
 ref_data = np.loadtxt(fpath + "/reg_data/ambient.csv",
@@ -32,7 +31,7 @@ class FlightConditionsTestCase(unittest.TestCase):
         self.prob.model.set_input_defaults('fc.alt', 0.0, units="ft")
         self.prob.model.set_input_defaults('fc.dTs', 0.0, units='degR')
 
-        fc = self.prob.model.add_subsystem('fc', FlightConditions())
+        self.prob.model.add_subsystem('fc', FlightConditions())
 
         self.prob.setup(check=False, force_alloc_complex=True)
         self.prob.set_solver_print(level=-1)
@@ -59,9 +58,6 @@ class FlightConditionsTestCase(unittest.TestCase):
 
             Tt = data[h_map['Tt']]
             Tt_c = self.prob['fc.Fl_O:tot:T']
-
-            Ts = data[h_map['Ts']]
-            Ts_c = self.prob['fc.Fl_O:stat:T']
 
             tol = 1e-4
             assert_near_equal(Pt_c, Pt, tol)

@@ -103,14 +103,13 @@ import unittest
 
 import numpy as np
 
-from openmdao.api import Problem, Group, IndepVarComp
+from openmdao.api import Problem, IndepVarComp
 from openmdao.utils.assert_utils import assert_near_equal
 from openmdao.utils.assert_utils import assert_check_partials
 
 
-from pycycle.elements import cooling, flow_start
+from pycycle.elements import cooling
 from pycycle.thermo.cea import species_data
-from pycycle.thermo.thermo import ThermoAdd
 from pycycle.constants import CEA_AIR_COMPOSITION, CEA_AIR_FUEL_COMPOSITION
 
 

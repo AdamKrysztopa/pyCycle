@@ -1,13 +1,10 @@
 import unittest
 
 import numpy as np
-
-import openmdao.api as om
-
 from openmdao.utils.assert_utils import assert_near_equal
 
+from pycycle.constants import AIR_ELEMENTS, CO2_CO_O2_ELEMENTS
 from pycycle.thermo.cea import species_data
-from pycycle.constants import CO2_CO_O2_ELEMENTS, CO2_CO_O2_MIX, AIR_ELEMENTS, AIR_MIX
 
 
 class SpeciesDataTestCase(unittest.TestCase):
@@ -18,7 +15,7 @@ class SpeciesDataTestCase(unittest.TestCase):
 
         with self.assertRaises(ValueError) as cm:
 
-            thermo = species_data.Properties(thermo_data_module=species_data.co2_co_o2, init_elements=product_elements)
+            species_data.Properties(thermo_data_module=species_data.co2_co_o2, init_elements=product_elements)
 
         self.assertEqual(str(cm.exception), "The provided element `O2` is a product in your provided thermo data, but is not an element.")
 
@@ -26,13 +23,13 @@ class SpeciesDataTestCase(unittest.TestCase):
 
         with self.assertRaises(ValueError) as cm:
 
-            thermo = species_data.Properties(thermo_data_module=species_data.co2_co_o2, init_elements=bad_elements)
+            species_data.Properties(thermo_data_module=species_data.co2_co_o2, init_elements=bad_elements)
 
             self.assertEqual(str(cm.exception), "The provided element `H` is not used in any products in your thermo data.")
 
         with self.assertRaises(ValueError) as cm:
 
-            thermo = species_data.Properties(thermo_data_module=species_data.co2_co_o2)
+            species_data.Properties(thermo_data_module=species_data.co2_co_o2)
 
         self.assertEqual(str(cm.exception), 'You have not provided `init_elements`. In order to set thermodynamic data it must be provided.')
 
@@ -141,7 +138,6 @@ class SpeciesDataTestCase(unittest.TestCase):
 if __name__ == "__main__":
 
     import numpy as np
-    import scipy as sp
 
     np.seterr(all='raise')
 

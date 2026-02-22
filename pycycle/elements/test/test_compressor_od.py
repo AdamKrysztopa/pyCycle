@@ -7,12 +7,10 @@ from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
 from openmdao.api import DirectSolver, BoundsEnforceLS, NewtonSolver
 
 from pycycle.mp_cycle import Cycle
-from pycycle.connect_flow import connect_flow
 
 from pycycle.elements.compressor import Compressor
 from pycycle.elements.flow_start import FlowStart
 from pycycle.maps.axi5 import AXI5
-from pycycle import constants
 from pycycle.thermo.cea import species_data
 
 

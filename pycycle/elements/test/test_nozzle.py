@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 
-from openmdao.api import Problem, Group
+from openmdao.api import Problem
 from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
 
 from pycycle.mp_cycle import Cycle

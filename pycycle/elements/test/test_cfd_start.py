@@ -1,13 +1,11 @@
-import unittest 
-import numpy as np 
+import unittest
 
 import openmdao.api as om
 from openmdao.utils.assert_utils import assert_near_equal
 
-
-from pycycle.thermo.cea.species_data import janaf
 from pycycle.elements.cfd_start import CFDStart
 from pycycle.mp_cycle import Cycle
+from pycycle.thermo.cea.species_data import janaf
 
 
 class CFDStartTestCase(unittest.TestCase): 
@@ -20,7 +18,7 @@ class CFDStartTestCase(unittest.TestCase):
         p.model.options['thermo_method'] = 'CEA'
         p.model.options['thermo_data'] = janaf
 
-        cfd_start = p.model.add_subsystem('cfd_start', CFDStart(), promotes=['*'])
+        p.model.add_subsystem('cfd_start', CFDStart(), promotes=['*'])
 
         p.model.set_input_defaults('Ps', units='kPa', val=100)
         p.model.set_input_defaults('V', units='m/s', val=100.)

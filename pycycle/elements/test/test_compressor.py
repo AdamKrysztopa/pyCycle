@@ -10,7 +10,6 @@ from pycycle.mp_cycle import Cycle
 from pycycle.thermo.cea.species_data import janaf
 from pycycle.elements.compressor import Compressor
 from pycycle.elements.flow_start import FlowStart
-from pycycle import constants
 
 fpath = os.path.dirname(os.path.realpath(__file__))
 ref_data = np.loadtxt(fpath + "/reg_data/compressor.csv",

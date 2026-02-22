@@ -1,19 +1,16 @@
 """ Tests the duct component. """
 
-import unittest
 import os
+import unittest
 
 import numpy as np
+from openmdao.api import Problem
+from openmdao.utils.assert_utils import assert_check_partials, assert_near_equal
 
-from openmdao.api import Problem, Group
-from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
-
-from pycycle.mp_cycle import Cycle
 from pycycle.elements.duct import Duct
 from pycycle.elements.flow_start import FlowStart
-from pycycle import constants
+from pycycle.mp_cycle import Cycle
 from pycycle.thermo.cea import species_data
-
 
 fpath = os.path.dirname(os.path.realpath(__file__))
 ref_data = np.loadtxt(fpath + "/reg_data/duct.csv", delimiter=",", skiprows=1)
@@ -174,8 +171,7 @@ class DuctTestCase(unittest.TestCase):
         self.prob.run_model()
 
         # check outputs
-        pt, ht, ps, ts = data[h_map['Fl_O.Pt']], data[
-            h_map['Fl_O.ht']], data[h_map['Fl_O.Ps']], data[h_map['Fl_O.Ts']]
+        ht, ts = data[h_map['Fl_O.ht']], data[h_map['Fl_O.Ts']]
         pt_computed = self.prob['OFF_DESIGN.duct.Fl_O:tot:P']
         ht_computed = self.prob['OFF_DESIGN.duct.Fl_O:tot:h']
         ps_computed = self.prob['OFF_DESIGN.duct.Fl_O:stat:P']

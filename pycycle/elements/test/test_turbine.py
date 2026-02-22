@@ -5,12 +5,11 @@ import unittest
 
 import numpy as np
 
-from openmdao.api import Problem, Group
+from openmdao.api import Problem
 from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
 
 from pycycle.mp_cycle import Cycle
 from pycycle.thermo.cea.species_data import janaf
-from pycycle.connect_flow import connect_flow
 from pycycle.elements.turbine import Turbine
 from pycycle.elements.flow_start import FlowStart
 from pycycle.maps.lpt2269 import LPT2269

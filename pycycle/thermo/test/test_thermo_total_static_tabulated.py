@@ -1,15 +1,11 @@
 import unittest
-import os
 
 import numpy as np
-
 import openmdao.api as om
-
 from openmdao.utils.assert_utils import assert_near_equal
 
-from pycycle.thermo.thermo import Thermo
-from pycycle.thermo.cea import species_data
 from pycycle import constants
+from pycycle.thermo.thermo import Thermo
 
 
 class SetTotalSimpleTestCase(unittest.TestCase):
@@ -83,8 +79,6 @@ class SetTotalSimpleTestCase(unittest.TestCase):
                                                               'spec': constants.AIR_JETA_TAB_SPEC }), 
                               promotes=['*'])
        
-        r = p.model
-
         p.setup(check=False)
 
         p.set_solver_print(level=-2)

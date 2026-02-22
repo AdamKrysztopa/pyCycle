@@ -1,17 +1,14 @@
 """ Tests the duct component. """
 
 import unittest
-import os
 
-import numpy as np
 
-from openmdao.api import Problem, Group
+from openmdao.api import Problem
 from openmdao.utils.assert_utils import assert_near_equal, assert_check_partials
 
 from pycycle.mp_cycle import Cycle
 from pycycle.elements.bleed_out import BleedOut
 from pycycle.elements.flow_start import FlowStart
-from pycycle import constants
 from pycycle.thermo.cea import species_data
 
 
