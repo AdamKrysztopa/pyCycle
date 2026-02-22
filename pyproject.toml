@@ -48,6 +48,8 @@ dev = [
     "black",
     "flake8",
     "mypy",
+    "pyright",
+    "ruff",
 ]
 docs = [
     "sphinx>=4.0",
