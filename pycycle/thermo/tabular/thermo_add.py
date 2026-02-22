@@ -1,8 +1,8 @@
 import numpy as np
-
 import openmdao.api as om
 
 from pycycle.constants import AIR_JETA_TAB_SPEC, TAB_AIR_FUEL_COMPOSITION
+
 
 class ThermoAdd(om.ExplicitComponent):
     """
@@ -95,7 +95,7 @@ class ThermoAdd(om.ExplicitComponent):
         n_compo = len(compo_in)
 
 
-        W_in = inputs['Fl_I:stat:W']
+        W_in = np.atleast_1d(inputs['Fl_I:stat:W']).ravel()[0].item()
         # composition vector is always given as vector of <something>-to-air ratios
         W_air_in = W_in/(1+np.sum(compo_in))
         W_other_in = W_air_in * compo_in
@@ -113,14 +113,14 @@ class ThermoAdd(om.ExplicitComponent):
         if mix_mode == "reactant": 
 
             for mix_name in self.mix_names:  
-                ratio = inputs[f'{mix_name}:ratio'] # scalar for reactant mode
+                ratio = np.atleast_1d(inputs[f'{mix_name}:ratio']).ravel()[0].item()  # scalar for reactant mode
 
-                W_air_mix = W_air_in # for reactant mode, we reference from the incoming air
-                W_other_mix = W_air_mix * ratio 
+                W_air_mix = W_air_in  # for reactant mode, we reference from the incoming air
+                W_other_mix = W_air_mix * ratio
                 outputs[f'{mix_name}:W'] = W_other_mix
                 W_other_out[self.idx_compo] += W_other_mix
                 W_out += W_other_mix
-                W_times_h += W_other_mix*inputs[f'{mix_name}:h']
+                W_times_h += W_other_mix * inputs[f'{mix_name}:h']
 
             outputs['composition_out'] = W_other_out/W_air_in
             outputs['Wout'] = W_out

@@ -1,8 +1,12 @@
 import numpy as np
-
 from openmdao.api import ExplicitComponent
 
-from pycycle.constants import P_REF, R_UNIVERSAL_ENG, R_UNIVERSAL_SI, MIN_VALID_CONCENTRATION
+from pycycle.constants import (
+    MIN_VALID_CONCENTRATION,
+    P_REF,
+    R_UNIVERSAL_ENG,
+    R_UNIVERSAL_SI,
+)
 
 
 class PropsCalcs(ExplicitComponent):
@@ -60,7 +64,7 @@ class PropsCalcs(ExplicitComponent):
 
         nj = inputs['n'][:num_prod]
         # nj[nj<0] = 1e-10 # ensure all concentrations stay non-zero
-        n_moles = inputs['n_moles']
+        n_moles = float(np.atleast_1d(inputs['n_moles']).ravel()[0])
 
         self.dlnVqdlnP = dlnVqdlnP = -1 + inputs['result_P'][num_element]
         self.dlnVqdlnT = dlnVqdlnT = 1 - result_T[num_element]
@@ -109,7 +113,7 @@ class PropsCalcs(ExplicitComponent):
         T = inputs['T']
         P = inputs['P']
         nj = inputs['n']
-        n_moles = inputs['n_moles']
+        n_moles = float(np.atleast_1d(inputs['n_moles']).ravel()[0])
         result_T = inputs['result_T']
         result_T_last = result_T[num_element]
         result_T_rest = result_T[:num_element]
@@ -216,7 +220,7 @@ class PropsCalcs(ExplicitComponent):
 
 if __name__ == "__main__":
 
-    from openmdao.api import Problem, Group, IndepVarComp
+    from openmdao.api import Group, IndepVarComp, Problem
 
     from pycycle.cea import species_data
 

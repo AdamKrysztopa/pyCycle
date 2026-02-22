@@ -184,9 +184,12 @@ python <script_name>.py
 
 **Problem**: `ValueError: setting an array element with a sequence`
 
-**Solution**: This may occur with some examples using newer NumPy versions. Try:
-1. Running a different example (e.g., `electric_propulsor.py` works reliably)
-2. Checking if there are updates to pyCycle that address compatibility
+**Cause**: On some setups using CEA thermodynamics, OpenMDAO may pass `n_moles` as a length-1 array into the CEA properties components. Assigning that array directly to a scalar slot (e.g., `rhs_P[-1]`) triggers this error.
+
+**Solution**:
+1. Update to a pyCycle version that normalizes `n_moles` to a scalar in the CEA property components.
+2. If you are on an older version, apply the local fix in [`pycycle/thermo/cea/props_rhs.py`](pycycle/thermo/cea/props_rhs.py:95) and [`pycycle/thermo/cea/props_calcs.py`](pycycle/thermo/cea/props_calcs.py:61) to coerce `n_moles` to a scalar before use.
+3. If you need a workaround without code changes, try running a non-CEA example (e.g., `electric_propulsor.py`).
 
 ### Solver Convergence Issues
 

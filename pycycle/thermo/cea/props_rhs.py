@@ -1,8 +1,6 @@
 import numpy as np
-
 from openmdao.api import ExplicitComponent
 
-from pycycle.constants import R_UNIVERSAL_ENG, R_UNIVERSAL_SI, MIN_VALID_CONCENTRATION
 from pycycle.thermo.cea import species_data
 
 
@@ -96,7 +94,8 @@ class PropsRHS(ExplicitComponent):
 
         # rhs for P
         outputs['rhs_P'][:num_element] = b0
-        outputs['rhs_P'][num_element] = inputs['n_moles']
+        n_moles = float(np.atleast_1d(inputs['n_moles']).ravel()[0])
+        outputs['rhs_P'][num_element] = n_moles
 
         # rhs for T
         self.H0_T = H0_T = thermo.H0(T)
@@ -139,7 +138,7 @@ class PropsRHS(ExplicitComponent):
 
 if __name__ == "__main__":
 
-    from openmdao.api import Problem, Group, IndepVarComp, LinearSystemComp
+    from openmdao.api import Group, IndepVarComp, LinearSystemComp, Problem
 
     thermo = species_data.Properties(species_data.co2_co_o2)
 

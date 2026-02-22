@@ -26,6 +26,7 @@ build/
 # Example output directories
 *_out/
 example_cycles/*_out/
+*.out
 
 # Python cache
 __pycache__/
@@ -33,7 +34,7 @@ __pycache__/
 *$py.class
 
 # IDE
-.vscode/
+# .vscode/  # keep workspace settings in repo
 .idea/
 *.swp
 *.swo
