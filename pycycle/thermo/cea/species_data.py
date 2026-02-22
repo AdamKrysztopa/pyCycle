@@ -1,16 +1,12 @@
-from collections import OrderedDict
 
 import numpy as np
-from scipy import interpolate
-
-from pycycle import constants
-
-from pycycle.thermo.cea.thermo_data import co2_co_o2
-from pycycle.thermo.cea.thermo_data import janaf
-from pycycle.thermo.cea.thermo_data import wet_air
 
 #from ad.admath import log
 from numpy import log
+
+from pycycle.thermo.cea.thermo_data import co2_co_o2, janaf, wet_air
+
+
 class Properties(object):
     """Compute H, S, Cp given a species and temperature"""
     
@@ -90,10 +86,10 @@ class Properties(object):
 
         self.aij_prod_deriv = np.zeros((self.num_element**2,self.num_prod))
         for k in range(self.num_element**2):
-            for l in range(self.num_prod):
+            for prod_idx in range(self.num_prod):
                 i = k//self.num_element
-                j = np.mod(k,self.num_element)
-                self.aij_prod_deriv[k][l] = self.aij_prod[i][j][l]
+                j = np.mod(k, self.num_element)
+                self.aij_prod_deriv[k][prod_idx] = self.aij_prod[i][j][prod_idx]
 
         #### Computing b0 values ###
         self.b0 = np.zeros(self.num_element)
@@ -183,4 +179,3 @@ class Properties(object):
             self.a[i][:len(data)] = data
 
         self.valid_temp_range = (max_low, min_high)
-
