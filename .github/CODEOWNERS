@@ -1,0 +1,11 @@
+# Default owners
+* @openmdao/pycycle-maintainers
+
+# Core library
+/pycycle/ @openmdao/pycycle-maintainers
+
+# Documentation
+/docs/ @openmdao/pycycle-docs
+
+# CI and tooling
+/.github/ @openmdao/pycycle-maintainers

@@ -1,5 +1,8 @@
 
+from __future__ import annotations
+
 import warnings
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
@@ -7,13 +10,15 @@ import openmdao.api as om
 
 from pycycle.constants import ALLOWED_THERMOS
 from pycycle.element_base import Element
+from pycycle.errors import CycleConfigurationError, FlowConnectionError
 from pycycle.thermo.cea import species_data
+from pycycle.typing import ProblemLike, SystemLike
 
 
 class Cycle(om.Group): 
 
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.options.declare('design', default=True,
                               desc='Switch between on-design and off-design calculation.')
         self.options.declare('thermo_method', values=ALLOWED_THERMOS, default='CEA',
@@ -23,21 +28,24 @@ class Cycle(om.Group):
                               desc='thermodynamic data set.', 
                               recordable=False)
 
-        self._elements = set()
+        self._elements: set[Element] = set()
 
-        self._flow_graph = nx.DiGraph()
+        self._flow_graph: nx.DiGraph = nx.DiGraph()
 
         # flag needed for user focused error checking to make sure they called super in their sub-class
         self._base_class_super_called = False
 
-        self._children = {}
+        self._children: dict[str, Any] = {}
 
-    def _setup_check(self): 
+    def _setup_check(self) -> None: 
 
         if not self._base_class_super_called: 
-            raise NotImplementedError(f"`super.setup()` has not been called within the setup method of f{self.__class__}")
+            raise CycleConfigurationError(
+                "`super().setup()` has not been called within the setup method of "
+                f"{self.__class__.__name__}."
+            )
         
-    def pyc_add_element(self, name, element, **kwargs):
+    def pyc_add_element(self, name: str, element: Element, **kwargs: Any) -> None:
         """
         A thin wrapper around `add_subsystem` to keep track of 
         the elements in a given cycle, separate from the general 
@@ -52,7 +60,7 @@ class Cycle(om.Group):
         self.add_subsystem(name, element, **kwargs)
 
 
-    def add_subsystem(self, name, subsys, **kwargs):
+    def add_subsystem(self, name: str, subsys: Any, **kwargs: Any):
         """
         Customized version of the OpenMDAO Group API method that does 
         additional tracking of elements for the Cycle
@@ -71,7 +79,7 @@ class Cycle(om.Group):
         return super().add_subsystem(name, subsys, **kwargs)
 
 
-    def setup(self): 
+    def setup(self) -> None: 
 
         self._base_class_super_called = True
 
@@ -121,18 +129,18 @@ class Cycle(om.Group):
             if node not in visited: 
 
                 if node_type == 'element': 
-                    node_element = self._get_subsystem(node)
+                    node_element = cast(Element, self._get_subsystem(node))
                     node_element.pyc_setup_output_ports()
 
                 # connection will be out_port -> in_port
                 elif node_type == 'out_port': 
-                    src_element = self._get_subsystem(node_parents[node])
+                    src_element = cast(Element, self._get_subsystem(node_parents[node]))
                     links = G.out_edges(node)
                     for link in links: 
                         # in almost every case there should only be one link, because otherwise you are creating extra mass flow 
                         # the one exception is for the cooling calcs, which get some "weak" connections from turbine and bleed srcs
                         
-                        target_element = self._get_subsystem(node_parents[link[1]])
+                        target_element = cast(Element, self._get_subsystem(node_parents[link[1]]))
 
                         # if target element is None there are two options: 
                         # 1) there is a sub-cycle that you need to push into 
@@ -145,15 +153,25 @@ class Cycle(om.Group):
                         # this passes whatever configuration data there was from the src element to the target keyed by port names
 
                         if out_port not in src_element.Fl_O_data: 
-                            raise RuntimeError(f'in {self.pathname},{src_element.pathname}.{out_port} has not been properly setup.'
-                                               f'something is wrong with one of your `pyc_setup_output_ports` method in {src_element.pathname}')
+                            raise FlowConnectionError(
+                                "Missing output port data while wiring flow graph. "
+                                f"cycle={self.pathname}, src={src_element.pathname}, "
+                                f"out_port={out_port}"
+                            )
 
                         target_element.Fl_I_data[in_port] = src_element.Fl_O_data[out_port]
 
                 visited.add(node)
 
 
-    def pyc_connect_flow(self, fl_src, fl_target, connect_stat=True, connect_tot=True, connect_w=True):
+    def pyc_connect_flow(
+        self,
+        fl_src: str,
+        fl_target: str,
+        connect_stat: bool = True,
+        connect_tot: bool = True,
+        connect_w: bool = True,
+    ) -> None:
         """ 
         helper function to connect all of the flow variables between two ports 
         """
@@ -196,47 +214,64 @@ class Cycle(om.Group):
 
 class MPCycle(om.Group): 
 
-    def __init__(self, **kwargs): 
-        self._cycle_params = {}
-        self._des_pnt = None
-        self._od_pnts= []
-        self._des_od_connections = []
+    def __init__(self, **kwargs: Any) -> None: 
+        self._cycle_params: dict[str, tuple[Any, str | None]] = {}
+        self._des_pnt: Any | None = None
+        self._od_pnts: list[Any] = []
+        self._des_od_connections: list[tuple[str, str]] = []
         self._use_default_des_od_conns = False
         super(MPCycle, self).__init__(**kwargs)
 
 
-    def pyc_add_cycle_param(self, name, val, units=None): 
+    def pyc_add_cycle_param(self, name: str, val: Any, units: str | None = None) -> None: 
 
         # TODO: Throw error if this is called after setup
 
         if name in self._cycle_params: 
-            raise ValueError(f'A cycle parameter named `{name}` already exits.')
+            raise CycleConfigurationError(
+                f"Cycle parameter `{name}` already exists."
+            )
 
         self._cycle_params[name] = (val, units)
 
-    def pyc_connect_des_od(self, src, target): 
+    def pyc_connect_des_od(self, src: str, target: str) -> None: 
         if self._des_pnt is None:
-            raise ValueError('Cannot connect between design and off design because no design point has been created. Use pyc_add_pnt to add a design point.')
+            raise CycleConfigurationError(
+                "Cannot connect between design and off-design: no design point created. "
+                "Use pyc_add_pnt to add a design point."
+            )
 
         elif self._od_pnts == []:
-            raise ValueError('Cannot connect between design and off design because no off design point has been created. Use pyc_add_pnt to add an off design point.')
+            raise CycleConfigurationError(
+                "Cannot connect between design and off-design: no off-design point created. "
+                "Use pyc_add_pnt to add an off-design point."
+            )
 
         self._des_od_connections.append((src, target))
 
-    def pyc_use_default_des_od_conns(self, skip=None): 
+    def pyc_use_default_des_od_conns(self, skip: set[str] | None = None) -> None: 
         if self._des_pnt is None:
-            raise ValueError('Cannot connect between design and off design because no design point has been created. Use pyc_add_pnt to add a design point.')
+            raise CycleConfigurationError(
+                "Cannot connect between design and off-design: no design point created. "
+                "Use pyc_add_pnt to add a design point."
+            )
 
         elif self._od_pnts == []:
-            raise ValueError('Cannot connect between design and off design because no off design point has been created. Use pyc_add_pnt to add an off design point.')
+            raise CycleConfigurationError(
+                "Cannot connect between design and off-design: no off-design point created. "
+                "Use pyc_add_pnt to add an off-design point."
+            )
 
         self._default_des_od_cons_skip = skip
         self._use_default_des_od_conns = True
 
-    def pyc_add_pnt(self, name, pnt, **kwargs):
+    def pyc_add_pnt(self, name: str, pnt: Any, **kwargs: Any) -> Any:
         if pnt.options['design'] is True:
             if self._des_pnt is not None:
-                raise ValueError(f'Only one design point is allowed. A design point named `{self._des_pnt.name}` already exists.')
+                raise CycleConfigurationError(
+                    "Only one design point is allowed. "
+                    f"Design point `{self._des_pnt.name}` already exists."
+                )
 
             self.add_subsystem(name, pnt, **kwargs)
             self._des_pnt = pnt
@@ -247,36 +282,41 @@ class MPCycle(om.Group):
         return pnt
 
 
-    def configure(self): 
+    def configure(self) -> None: 
         # after all child pts have been set up, 
         # promote any cycle parameters to this level and set their default values
         # then issue connections between the design and off-design points
 
+        if self._des_pnt is None:
+            return
+
+        des_pnt = self._des_pnt
+
         for param, (val, units) in self._cycle_params.items(): 
             self.set_input_defaults(name=param, val=val, units=units)
         
-            self.promotes(self._des_pnt.name, inputs=[param])
+            self.promotes(des_pnt.name, inputs=[param])
             for pnt in self._od_pnts: 
                 self.promotes(pnt.name, inputs=[param])
 
 
         for src, target in self._des_od_connections: 
             for od_pnt in self._od_pnts: 
-                self.connect(f'{self._des_pnt.name}.{src}', f'{od_pnt.name}.{target}')
+                self.connect(f'{des_pnt.name}.{src}', f'{od_pnt.name}.{target}')
         
         if self._use_default_des_od_conns: 
             skip = self._default_des_od_cons_skip
-            for elem in self._des_pnt._elements: 
+            for elem in des_pnt._elements: 
                 if  skip is not None and elem.name in skip: 
                     continue
                 try: 
                     for src, target in elem.default_des_od_conns: 
                         for od_pnt in self._od_pnts: 
-                            self.connect( f'{self._des_pnt.name}.{elem.name}.{src}', f'{od_pnt.name}.{elem.name}.{target}')
+                            self.connect( f'{des_pnt.name}.{elem.name}.{src}', f'{od_pnt.name}.{elem.name}.{target}')
                 except AttributeError: 
                     pass # no des-to-od conns defined
 
-    def _resolve_point_name(self, point_name=None):
+    def _resolve_point_name(self, point_name: str | None = None) -> str:
         if point_name is not None:
             return point_name
 
@@ -286,9 +326,13 @@ class MPCycle(om.Group):
         if self._des_pnt is not None:
             return self._des_pnt.name
 
-        raise ValueError('No points have been created on this MPCycle instance.')
+        raise CycleConfigurationError(
+            'No points have been created on this MPCycle instance.'
+        )
 
-    def checkpoint_state(self, point_name=None, include_inputs=False):
+    def checkpoint_state(
+        self, point_name: str | None = None, include_inputs: bool = False
+    ) -> dict[str, Any]:
         """
         Capture a snapshot of solver state for a point (outputs, and optionally inputs).
 
@@ -300,7 +344,7 @@ class MPCycle(om.Group):
             If True, include inputs as well as outputs in the checkpoint.
         """
         point_name = self._resolve_point_name(point_name)
-        pnt = self._get_subsystem(point_name)
+        pnt = cast(SystemLike, self._get_subsystem(point_name))
 
         outputs = pnt.list_outputs(out_stream=None, return_format='list', prom_name=False)
         state = {
@@ -314,7 +358,13 @@ class MPCycle(om.Group):
 
         return state
 
-    def restore_state(self, state, point_name=None, include_inputs=False, strict=False):
+    def restore_state(
+        self,
+        state: dict[str, Any],
+        point_name: str | None = None,
+        include_inputs: bool = False,
+        strict: bool = False,
+    ) -> None:
         """
         Restore a previously captured solver state for a point.
 
@@ -330,12 +380,15 @@ class MPCycle(om.Group):
             If True, raise on any set_val failure. If False, ignore missing vars.
         """
         if not isinstance(state, dict) or 'outputs' not in state:
-            raise ValueError('State must be a dict returned by checkpoint_state().')
+            raise CycleConfigurationError(
+                'State must be a dict returned by checkpoint_state().' 
+                ' Expected keys: outputs (and optional inputs, point_name).'
+            )
 
         point_name = self._resolve_point_name(point_name or state.get('point_name'))
-        pnt = self._get_subsystem(point_name)
+        pnt = cast(SystemLike, self._get_subsystem(point_name))
 
-        def _set_vars(var_dict):
+        def _set_vars(var_dict: dict[str, Any]) -> None:
             for name, val in var_dict.items():
                 try:
                     pnt.set_val(name, val)
@@ -347,8 +400,15 @@ class MPCycle(om.Group):
         if include_inputs:
             _set_vars(state.get('inputs', {}))
 
-    def solve_case_sequence(self, cases, point_name=None, prob=None, outputs=None,
-                            warm_start=True, continue_on_failure=True):
+    def solve_case_sequence(
+        self,
+        cases: list[dict[str, tuple[Any, str | None]]],
+        point_name: str | None = None,
+        prob: ProblemLike | None = None,
+        outputs: list[str] | None = None,
+        warm_start: bool = True,
+        continue_on_failure: bool = True,
+    ) -> list[dict[str, Any]]:
         """
         Run a sequence of operating points with optional warm-starting.
 
@@ -368,11 +428,13 @@ class MPCycle(om.Group):
             If True, continue to next case after failure; otherwise re-raise.
         """
         if prob is None:
-            raise ValueError('solve_case_sequence requires an om.Problem instance via prob=...')
+            raise CycleConfigurationError(
+                'solve_case_sequence requires an om.Problem instance via prob=...'
+            )
 
         point_name = self._resolve_point_name(point_name)
 
-        results = []
+        results: list[dict[str, Any]] = []
         last_state = None
 
         for case in cases:
@@ -390,7 +452,7 @@ class MPCycle(om.Group):
                 prob.run_model()
                 last_state = self.checkpoint_state(point_name)
 
-                result = {'success': True}
+                result: dict[str, Any] = {'success': True}
                 if outputs:
                     extracted = {}
                     for name in outputs:

@@ -1,5 +1,9 @@
 """Public API exports for pyCycle."""
 
+from __future__ import annotations
+
+from typing import List
+
 from pycycle.connect_flow import connect_flow
 from pycycle.constants import (
     AIR_JETA_TAB_SPEC,
@@ -50,7 +54,7 @@ from pycycle.viewers import (
     print_turbine,
 )
 
-__all__ = [
+__all__: List[str] = [
     "AIR_JETA_TAB_SPEC",
     "AXI3_2",
     "AXI5",

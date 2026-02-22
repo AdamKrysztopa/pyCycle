@@ -91,6 +91,7 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
+"pycycle" = ["py.typed"]
 "pycycle.elements.test" = ["reg_data/*.csv"]
 "pycycle.thermo.test" = ["*.csv"]
 "pycycle.thermo.tabular" = ["*.pkl"]
@@ -109,6 +110,10 @@ addopts = "-v --tb=short"
 
 [tool.mypy]
 python_version = "3.10"
-warn_return_any = true
+strict = true
 warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["openmdao.*", "matplotlib.*"]
 ignore_missing_imports = true

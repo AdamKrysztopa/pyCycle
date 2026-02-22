@@ -1,15 +1,24 @@
+import os
 import sys
 
 import numpy as np
+
+from pycycle.typing import ProblemLike
 
 # protection incase env doesn't have matplotlib installed, since its not strictly required
 try:
     import matplotlib.pyplot as plt
 except ImportError:
-    plt = None
+    plt = None  # type: ignore[assignment]
 
 
-def get_val(prob, point, element, var_name, units=None):
+def get_val(
+    prob: ProblemLike,
+    point: str,
+    element: str,
+    var_name: str,
+    units: str | None = None,
+) -> float:
     """
     Get the value of the requested element from the OpenMDAO model.
 
@@ -37,6 +46,44 @@ def get_val(prob, point, element, var_name, units=None):
         val = prob.get_val(f"{element}.{var_name}", units=units)
 
     return val[0]
+
+
+def configure_solver_tracing(prob: ProblemLike) -> bool:
+    """Enable OpenMDAO solver tracing when PYCYCLE_SOLVER_TRACE is set.
+
+    Returns True when tracing is enabled and applied.
+    """
+    if os.getenv("PYCYCLE_SOLVER_TRACE", "").strip() == "":
+        return False
+
+    try:
+        model = prob.model
+        solver = getattr(model, "nonlinear_solver", None)
+        if solver is None:
+            return False
+
+        if "iprint" in solver.options:
+            solver.options["iprint"] = 2
+        if "debug_print" in solver.options:
+            solver.options["debug_print"] = True
+        return True
+    except Exception:
+        return False
+
+
+def print_solver_iteration_summary(prob: ProblemLike, file=sys.stdout) -> None:
+    """Print a minimal solver iteration summary when available."""
+    solver = getattr(prob.model, "nonlinear_solver", None)
+    if solver is None:
+        print("No nonlinear solver attached to the model.", file=file)
+        return
+
+    iterations = getattr(solver, "_iter_count", None)
+    if iterations is None:
+        print("Solver iteration count is unavailable.", file=file)
+        return
+
+    print(f"Solver iterations: {iterations}", file=file)
 
 def print_flow_station(prob, fs_names, file=sys.stdout):
     names = ['tot:P', 'tot:T', 'tot:h', 'tot:S', 'stat:P', 'stat:W', 'stat:MN', 'stat:V', 'stat:area']
@@ -309,6 +356,9 @@ def print_mixer(prob, element_names, file=sys.stdout):
 
 def plot_compressor_maps(prob, element_names, eff_vals=np.array([0,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95,1.0]),alphas=[0]):
 
+    if plt is None:
+        raise ImportError("matplotlib is required for plot_compressor_maps")
+
     for e_name in element_names:
         comp = prob.model._get_subsystem(e_name)
         map_data = comp.options['map_data']
@@ -344,6 +394,9 @@ def plot_compressor_maps(prob, element_names, eff_vals=np.array([0,0.5,0.55,0.6,
 
 
 def plot_turbine_maps(prob, element_names, eff_vals=np.array([0,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95,1.0]),alphas=[0]):
+
+    if plt is None:
+        raise ImportError("matplotlib is required for plot_turbine_maps")
 
     for e_name in element_names:
         comp = prob.model._get_subsystem(e_name)
