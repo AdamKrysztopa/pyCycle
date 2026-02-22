@@ -7,3 +7,42 @@
 pycycle.egg-info/*
 /build*
 *testflo_report.out
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# UV and pip
+.uv/
+uv.lock
+
+# Build and distribution
+om_pycycle.egg-info/
+*.egg-info/
+dist/
+build/
+
+# Example output directories
+*_out/
+example_cycles/*_out/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+.coverage
+htmlcov/
+*.cover
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
