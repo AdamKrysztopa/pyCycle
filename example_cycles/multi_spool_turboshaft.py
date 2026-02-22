@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 
 import openmdao.api as om
 
@@ -148,9 +149,20 @@ def viewer(prob, pt, file=sys.stdout):
     print a report of all the relevant cycle properties
     """
 
-    summary_data = (prob[pt+'.fc.Fl_O:stat:MN'], prob[pt+'.fc.alt'],prob[pt+'.inlet.Fl_O:stat:W'], 
-                    prob[pt+'.perf.Fn'], prob[pt+'.perf.Fg'], prob[pt+'.inlet.F_ram'],
-                    prob[pt+'.perf.OPR'], prob[pt+'.perf.PSFC'])
+    def _scalar(v):
+        arr = np.asarray(v)
+        return float(arr.flat[0])
+
+    summary_data = tuple(_scalar(prob[path]) for path in (
+        pt + '.fc.Fl_O:stat:MN',
+        pt + '.fc.alt',
+        pt + '.inlet.Fl_O:stat:W',
+        pt + '.perf.Fn',
+        pt + '.perf.Fg',
+        pt + '.inlet.F_ram',
+        pt + '.perf.OPR',
+        pt + '.perf.PSFC',
+    ))
 
     print(file=file, flush=True)
     print(file=file, flush=True)
