@@ -28,7 +28,7 @@ These issues pose immediate risks to correctness, stability, or maintainability.
 
 | ID | Issue | Risk | Files | Status |
 |----|-------|------|-------|--------|
-| **DX-03** | Add pre-commit hooks (black, flake8, isort) | HIGH | `.pre-commit-config.yaml` | ✅ Done |
+| **DX-03** | Add pre-commit hooks (black, flake8, isort) | HIGH | `.pre-commit-config.yaml` | ✅ Done (ruff added) |
 | **TST-06** | Enable CI coverage reporting | MEDIUM | [`.github/workflows/`](../.github/workflows/) | ✅ Done |
 
 ### Example Runs (Phase 1 verification)
@@ -68,14 +68,14 @@ These improvements significantly enhance usability, robustness, or developer exp
 |----|-------|----------|-------|
 | **DOC-01** | Expand Sphinx API reference | HIGH | [`pycycle/docs/`](../pycycle/docs/) |
 | **DOC-03** | Add usage cookbook | MEDIUM | `pycycle/docs/cookbook.rst` |
-| **DOC-05** | Create CONTRIBUTING.md | MEDIUM | `CONTRIBUTING.md` |
+| **DOC-05** | Create CONTRIBUTING.md | MEDIUM | `CONTRIBUTING.md` | ✅ Done |
 
 ### Developer Experience
 
 | ID | Issue | Priority | Files |
 |----|-------|----------|-------|
-| **DX-02** | Better error messages + custom exceptions | MEDIUM | `pycycle/errors.py` |
-| **DX-04** | Add Makefile for common tasks | MEDIUM | `Makefile` |
+| **DX-02** | Better error messages + custom exceptions | MEDIUM | `pycycle/errors.py` | ✅ Done |
+| **DX-04** | Add Makefile for common tasks | MEDIUM | `Makefile` | ✅ Done |
 
 ---
 
@@ -188,10 +188,10 @@ These are refinements, optimizations, and polish items.
 
 | ID | Issue | Priority | Files |
 |----|-------|----------|-------|
-| **DX-01** | Add type hints to core modules | MEDIUM | Core `.py` files + `pycycle/py.typed` |
-| **DX-05** | Regression data management guide | LOW | `docs/REGRESSION_DATA.md` |
-| **DX-06** | CODEOWNERS and review process | LOW | `.github/CODEOWNERS` |
-| **DX-07** | Performance debug hooks | LOW | [`viewers.py`](../pycycle/viewers.py) |
+| **DX-01** | Add type hints to core modules | MEDIUM | Core `.py` files + `pycycle/py.typed` | ✅ Done |
+| **DX-05** | Regression data management guide | LOW | `docs/REGRESSION_DATA.md` | ✅ Done |
+| **DX-06** | CODEOWNERS and review process | LOW | `.github/CODEOWNERS` | ✅ Done |
+| **DX-07** | Performance debug hooks | LOW | [`viewers.py`](../pycycle/viewers.py) | ✅ Done |
 
 ---
 
