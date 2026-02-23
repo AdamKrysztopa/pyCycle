@@ -1,4 +1,5 @@
 import openmdao.api as om
+import argparse
 
 import pycycle.api as pyc
 
@@ -98,10 +99,14 @@ def viewer(prob, pt):
     pyc.print_nozzle(prob, [f'{pt}.nozz'])
 
 class MPWetPropulsor(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
-        self.pyc_add_pnt('design', WetPropulsor(design=True, thermo_method='CEA'))
+        self.pyc_add_pnt('design', WetPropulsor(design=True, thermo_method='CEA', unit_system=unit_system))
 
         self.set_input_defaults('design.fc.alt', 10000., units="m")
         self.set_input_defaults('design.fc.MN', .72)
@@ -116,7 +121,7 @@ class MPWetPropulsor(pyc.MPCycle):
         self.od_WARs = [.001,]
 
         for i, pt in enumerate(self.od_pts):
-            self.pyc_add_pnt('off_design', WetPropulsor(design=False, thermo_method='CEA'))
+            self.pyc_add_pnt('off_design', WetPropulsor(design=False, thermo_method='CEA', unit_system=unit_system))
 
             self.set_input_defaults(pt+'.fc.alt', self.od_alts[i], units='m')
             self.set_input_defaults(pt+'.fc.MN', self.od_MNs[i])
@@ -133,10 +138,13 @@ if __name__ == "__main__":
 
     import numpy as np
     np.set_printoptions(precision=5)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
 
     prob = om.Problem()
-    prob.model = mp_wet_propulsor = MPWetPropulsor()
+    prob.model = mp_wet_propulsor = MPWetPropulsor(unit_system=args.unit_system)
 
     prob.setup()
 

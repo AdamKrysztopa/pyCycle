@@ -104,10 +104,11 @@ class BleedOut(Element):
         statics = self.options['statics']
         design = self.options['design']
         bleeds = self.options['bleed_names']
+        unit_system = self.options['unit_system']
         composition = self.Fl_I_data['Fl_I']
 
         # Create inlet flowstation
-        flow_in = FlowIn(fl_name='Fl_I')
+        flow_in = FlowIn(fl_name='Fl_I', unit_system=unit_system)
         self.add_subsystem('flow_in', flow_in, promotes=['Fl_I:tot:*', 'Fl_I:stat:*'])
 
         # Bleed flow calculations
@@ -124,7 +125,8 @@ class BleedOut(Element):
             bleed_flow = Thermo(mode='total_TP', fl_name=BN+":tot", 
                                 method=thermo_method, 
                                 thermo_kwargs={'composition':composition, 
-                                               'spec':thermo_data})
+                                               'spec':thermo_data},
+                                unit_system=unit_system)
             self.add_subsystem(BN+'_flow', bleed_flow,
                                promotes_inputs=[('composition', 'Fl_I:tot:composition'),('T','Fl_I:tot:T'),('P','Fl_I:tot:P')],
                                promotes_outputs=['{}:tot:*'.format(BN)])
@@ -133,7 +135,8 @@ class BleedOut(Element):
         real_flow = Thermo(mode='total_TP', fl_name="Fl_O:tot", 
                            method=thermo_method, 
                            thermo_kwargs={'composition':composition, 
-                                          'spec':thermo_data})
+                                          'spec':thermo_data},
+                           unit_system=unit_system)
         prom_in = [('composition', 'Fl_I:tot:composition'),('T','Fl_I:tot:T'),('P','Fl_I:tot:P')]
         self.add_subsystem('real_flow', real_flow, promotes_inputs=prom_in,
                            promotes_outputs=['Fl_O:*'])
@@ -144,7 +147,8 @@ class BleedOut(Element):
                 out_stat = Thermo(mode='static_MN', fl_name="Fl_O:stat", 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            'MN']
                 prom_out = ['Fl_O:stat:*']
@@ -162,7 +166,8 @@ class BleedOut(Element):
                 out_stat = Thermo(mode='static_A', fl_name="Fl_O:stat", 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            'area']
                 prom_out = ['Fl_O:stat:*']
@@ -201,4 +206,3 @@ if __name__ == "__main__":
     print('T',p['Fl_I:tot:T'],p['Fl_O:tot:T'],p['test1:tot:T'],p['test2:tot:T'])
     print('P',p['Fl_I:tot:P'],p['Fl_O:tot:P'],p['test1:tot:P'],p['test2:tot:P'])
     # p.check_partials()
-

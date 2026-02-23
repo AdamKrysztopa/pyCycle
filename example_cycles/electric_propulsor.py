@@ -1,4 +1,5 @@
 import openmdao.api as om
+import argparse
 
 import pycycle.api as pyc
 
@@ -114,10 +115,14 @@ def map_plots(prob, pt):
 
 
 class MPpropulsor(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
-        self.pyc_add_pnt('design', Propulsor(design=True, thermo_method='CEA'))
+        self.pyc_add_pnt('design', Propulsor(design=True, thermo_method='CEA', unit_system=unit_system))
         self.pyc_add_cycle_param('pwr_target', 100.)
 
         # define the off-design conditions we want to run
@@ -127,7 +132,7 @@ class MPpropulsor(pyc.MPCycle):
         self.od_Rlines = [2.2,]
 
         for i, pt in enumerate(self.od_pts):
-            self.pyc_add_pnt(pt, Propulsor(design=False, thermo_method='CEA'))
+            self.pyc_add_pnt(pt, Propulsor(design=False, thermo_method='CEA', unit_system=unit_system))
 
             self.set_input_defaults(pt+'.fc.MN', val=self.od_MNs[i])
             self.set_input_defaults(pt+'.fc.alt', val=self.od_alts, units='m')
@@ -142,11 +147,14 @@ class MPpropulsor(pyc.MPCycle):
 
 if __name__ == "__main__":
     import time
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
 
     prob = om.Problem()
 
-    prob.model = mp_propulsor = MPpropulsor()
+    prob.model = mp_propulsor = MPpropulsor(unit_system=args.unit_system)
 
 
     prob.setup()

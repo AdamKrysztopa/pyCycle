@@ -46,6 +46,7 @@ class FlowStart(Element):
         thermo_method = self.options['thermo_method']
         thermo_data = self.options['thermo_data']
         reactant = self.options['reactant']
+        unit_system = self.options['unit_system']
 
         composition = self.Fl_O_data['Fl_O']
 
@@ -62,7 +63,8 @@ class FlowStart(Element):
         set_TP = Thermo(mode='total_TP', fl_name='Fl_O:tot', 
                         method=thermo_method, 
                         thermo_kwargs={'composition':composition, 
-                                       'spec':thermo_data})
+                                       'spec':thermo_data},
+                        unit_system=unit_system)
 
         in_vars = ('T','P', 'composition')
 
@@ -72,7 +74,8 @@ class FlowStart(Element):
         set_stat_MN = Thermo(mode='static_MN', fl_name='Fl_O:stat', 
                              method=thermo_method, 
                              thermo_kwargs={'composition':composition, 
-                                            'spec':thermo_data} )
+                                            'spec':thermo_data},
+                             unit_system=unit_system)
 
         self.add_subsystem('exit_static', set_stat_MN, promotes_inputs=('MN', 'W', 'composition'),
                            promotes_outputs=('Fl_O:stat:*', ))
@@ -83,5 +86,4 @@ class FlowStart(Element):
         self.connect('totals.gamma', 'exit_static.guess:gamt')
 
         super().setup()
-
 

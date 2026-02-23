@@ -1,4 +1,5 @@
 import sys
+import argparse
 
 import openmdao.api as om
 
@@ -284,10 +285,14 @@ def viewer(prob, pt, file=sys.stdout):
 
 
 class MPhbtf(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
-        self.pyc_add_pnt('DESIGN', HBTF(thermo_method='CEA')) # Create an instace of the High Bypass ratio Turbofan
+        self.pyc_add_pnt('DESIGN', HBTF(thermo_method='CEA', unit_system=unit_system)) # Create an instace of the High Bypass ratio Turbofan
 
         self.set_input_defaults('DESIGN.inlet.MN', 0.751)
         self.set_input_defaults('DESIGN.fan.MN', 0.4578)
@@ -345,13 +350,13 @@ class MPhbtf(pyc.MPCycle):
         self.od_Fn_target = [5500.0, 5300]
         self.od_dTs = [0.0, 0.0]
 
-        self.pyc_add_pnt('OD_full_pwr', HBTF(design=False, thermo_method='CEA', throttle_mode='T4'))
+        self.pyc_add_pnt('OD_full_pwr', HBTF(design=False, thermo_method='CEA', throttle_mode='T4', unit_system=unit_system))
 
         self.set_input_defaults('OD_full_pwr.fc.MN', 0.8)
         self.set_input_defaults('OD_full_pwr.fc.alt', 35000, units='ft')
         self.set_input_defaults('OD_full_pwr.fc.dTs', 0., units='degR')
 
-        self.pyc_add_pnt('OD_part_pwr', HBTF(design=False, thermo_method='CEA', throttle_mode='percent_thrust'))
+        self.pyc_add_pnt('OD_part_pwr', HBTF(design=False, thermo_method='CEA', throttle_mode='percent_thrust', unit_system=unit_system))
 
         self.set_input_defaults('OD_part_pwr.fc.MN', 0.8)
         self.set_input_defaults('OD_part_pwr.fc.alt', 35000, units='ft')
@@ -369,12 +374,15 @@ class MPhbtf(pyc.MPCycle):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
     import time
 
     prob = om.Problem()
 
-    prob.model = mp_hbtf = MPhbtf()
+    prob.model = mp_hbtf = MPhbtf(unit_system=args.unit_system)
 
     prob.setup()
 

@@ -4,6 +4,7 @@ import sys
 import numpy as np
 
 from pycycle.typing import ProblemLike
+from pycycle.unit_utils import get_unit
 
 # protection incase env doesn't have matplotlib installed, since its not strictly required
 try:
@@ -87,6 +88,27 @@ def print_solver_iteration_summary(prob: ProblemLike, file=sys.stdout) -> None:
 
 def print_flow_station(prob, fs_names, file=sys.stdout):
     names = ['tot:P', 'tot:T', 'tot:h', 'tot:S', 'stat:P', 'stat:W', 'stat:MN', 'stat:V', 'stat:area']
+    units_for_names = {
+        'tot:P': 'pressure',
+        'tot:T': 'temperature',
+        'tot:h': 'enthalpy',
+        'tot:S': 'entropy',
+        'stat:P': 'pressure',
+        'stat:W': 'mass_flow',
+        'stat:MN': None,
+        'stat:V': 'velocity',
+        'stat:area': 'area',
+    }
+
+    unit_system = 'ENG'
+    try:
+        first = fs_names[0]
+        point_name = first.split('.')[0]
+        point = prob.model._get_subsystem(point_name)
+        if hasattr(point, 'options') and 'unit_system' in point.options:
+            unit_system = point.options['unit_system']
+    except Exception:
+        pass
 
     n_names = len(names)
     line_tmpl = '{:<23}|  '+'{:>13}'*n_names
@@ -108,7 +130,11 @@ def print_flow_station(prob, fs_names, file=sys.stdout):
         data = []
         for name in names:
             full_name = '{}:{}'.format(fs_name, name)
-            data.append(prob[full_name][0])
+            unit_type = units_for_names[name]
+            if unit_type is None:
+                data.append(prob[full_name][0])
+            else:
+                data.append(prob.get_val(full_name, units=get_unit(unit_type, unit_system))[0])
 
         vals = [fs_name] + data
         print(line_tmpl.format(*vals), file=file, flush=True)

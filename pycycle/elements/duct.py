@@ -168,11 +168,12 @@ class Duct(Element):
         statics = self.options['statics']
         design = self.options['design']
         expMN = self.options['expMN']
+        unit_system = self.options['unit_system']
 
         composition = self.Fl_I_data['Fl_I']
 
         # Create inlet flowstation
-        flow_in = FlowIn(fl_name='Fl_I')
+        flow_in = FlowIn(fl_name='Fl_I', unit_system=unit_system)
         self.add_subsystem('flow_in', flow_in, promotes=['Fl_I:tot:*', 'Fl_I:stat:*'])
 
         if expMN > 1e-10: # Calcluate pressure losses as function of Mach number
@@ -197,7 +198,8 @@ class Duct(Element):
         real_flow = Thermo(mode='total_hP', fl_name='Fl_O:tot', 
                            method=thermo_method, 
                            thermo_kwargs={'composition':composition, 
-                                          'spec':thermo_data})
+                                          'spec':thermo_data},
+                           unit_system=unit_system)
         prom_in = [('composition', 'Fl_I:tot:composition')]
         self.add_subsystem('real_flow', real_flow, promotes_inputs=prom_in,
                            promotes_outputs=['Fl_O:*'])
@@ -210,7 +212,8 @@ class Duct(Element):
                 out_stat = Thermo(mode='static_MN', fl_name='Fl_O:stat', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            ('W', 'Fl_I:stat:W'),
                            'MN']
@@ -228,7 +231,8 @@ class Duct(Element):
                 out_stat = Thermo(mode='static_A', fl_name='Fl_O:stat', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            ('W', 'Fl_I:stat:W'),
                            'area']
@@ -267,4 +271,3 @@ if __name__ == "__main__":
     p.run_model()
 
     p.check_partials(method='cs', compact_print=True)
-

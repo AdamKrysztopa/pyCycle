@@ -1,4 +1,5 @@
 import sys
+import argparse
 
 import numpy as np
 import openmdao.api as om
@@ -157,11 +158,15 @@ def map_plots(prob, pt):
 
 
 class MPTurbojet(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         # Create design instance of model
-        self.pyc_add_pnt('DESIGN', Turbojet())
+        self.pyc_add_pnt('DESIGN', Turbojet(unit_system=unit_system))
 
         self.set_input_defaults('DESIGN.Nmech', 8070.0, units='rpm')
         self.set_input_defaults('DESIGN.inlet.MN', 0.60)
@@ -180,7 +185,7 @@ class MPTurbojet(pyc.MPCycle):
         self.od_Fns =[11000.0, 8000.0]
 
         for i,pt in enumerate(self.od_pts):
-            self.pyc_add_pnt(pt, Turbojet(design=False))
+            self.pyc_add_pnt(pt, Turbojet(design=False, unit_system=unit_system))
 
             self.set_input_defaults(pt+'.fc.MN', val=self.od_MNs[i])
             self.set_input_defaults(pt+'.fc.alt', self.od_alts[i], units='ft')
@@ -196,10 +201,14 @@ if __name__ == "__main__":
 
     import time
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
+
     prob = om.Problem()
 
 
-    mp_turbojet = prob.model = MPTurbojet()
+    mp_turbojet = prob.model = MPTurbojet(unit_system=args.unit_system)
 
     # prob.model.set_order(['DESIGN', 'OD0', 'OD1', 'test')
 

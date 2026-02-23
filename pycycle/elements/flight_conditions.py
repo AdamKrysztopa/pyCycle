@@ -48,6 +48,7 @@ class FlightConditions(Element):
         thermo_data = self.options['thermo_data']
         reactant = self.options['reactant']
         mix_ratio_name = self.options['mix_ratio_name']
+        unit_system = self.options['unit_system']
 
         # composition = self.Fl_O_data['Fl_O']
         composition = self.options['composition']
@@ -63,7 +64,8 @@ class FlightConditions(Element):
                                                       thermo_data=thermo_data, 
                                                       composition=composition, 
                                                       reactant=reactant, 
-                                                      mix_ratio_name=mix_ratio_name), 
+                                                      mix_ratio_name=mix_ratio_name,
+                                                      unit_system=unit_system), 
                                       promotes=proms)
 
         # need to manually call this in this setup, because we have an element within an element

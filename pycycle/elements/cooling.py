@@ -187,11 +187,13 @@ class Row(om.Group):
         self.options.declare('main_flow_composition')
         self.options.declare('bld_flow_composition')
         self.options.declare('mix_flow_composition')
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
 
         thermo_method = self.options['thermo_method']
         thermo_data = self.options['thermo_data']
+        unit_system = self.options['unit_system']
 
         if thermo_data is None: 
             thermo_data = THERMO_DEFAULT_COMPOSITIONS[thermo_method]
@@ -222,7 +224,8 @@ class Row(om.Group):
         mixed_flow = Thermo(mode='total_hP', fl_name='Fl_O:tot', 
                             method=thermo_method, 
                             thermo_kwargs={'composition':mix_flow_composition, 
-                                           'spec':thermo_data})
+                                           'spec':thermo_data},
+                            unit_system=unit_system)
         self.add_subsystem('mixed_flow', mixed_flow,
                            promotes_outputs=['Fl_O:tot:*'])
 
@@ -269,18 +272,19 @@ class TurbineCooling(Element):
         thermo_data = self.options['thermo_data']
         n_stages = self.options['n_stages']
         n_rows = 2 * n_stages
+        unit_system = self.options['unit_system']
 
         if self.options['owns_x_factor']:
             indeps = self.add_subsystem('indeps', om.IndepVarComp(), promotes=['*'])
             indeps.add_output('x_factor', val=1.0)
 
-        in_flow = FlowIn(fl_name='Fl_turb_I')
+        in_flow = FlowIn(fl_name='Fl_turb_I', unit_system=unit_system)
         self.add_subsystem('turb_in_flow', in_flow, promotes_inputs=['Fl_turb_I:tot:*', 'Fl_turb_I:stat:*'])
 
-        in_flow = FlowIn(fl_name='Fl_turb_O')
+        in_flow = FlowIn(fl_name='Fl_turb_O', unit_system=unit_system)
         self.add_subsystem('turb_out_flow', in_flow, promotes_inputs=['Fl_turb_O:tot:*', 'Fl_turb_O:stat:*'])
 
-        in_flow = FlowIn(fl_name='Fl_cool')
+        in_flow = FlowIn(fl_name='Fl_cool', unit_system=unit_system)
         self.add_subsystem('cool_in_flow', in_flow, promotes_inputs=['Fl_cool:tot:*', 'Fl_cool:stat:*'])
 
 
@@ -298,7 +302,8 @@ class TurbineCooling(Element):
                                         thermo_method=self.options['thermo_method'],
                                         main_flow_composition=self.Fl_I_data['Fl_turb_I'], 
                                         bld_flow_composition=self.Fl_I_data['Fl_cool'], 
-                                        mix_flow_composition=self.Fl_I_data['Fl_turb_O']),
+                                        mix_flow_composition=self.Fl_I_data['Fl_turb_O'],
+                                        unit_system=unit_system),
                            promotes_inputs=p_inputs_all+p_row_inputs)
 
         for i in range(1,n_rows):
@@ -312,7 +317,8 @@ class TurbineCooling(Element):
                                    thermo_method=self.options['thermo_method'],
                                    main_flow_composition=self.Fl_I_data['Fl_turb_I'], 
                                    bld_flow_composition=self.Fl_I_data['Fl_cool'], 
-                                   mix_flow_composition=self.Fl_I_data['Fl_turb_O']),
+                                   mix_flow_composition=self.Fl_I_data['Fl_turb_O'],
+                                   unit_system=unit_system),
                                promotes_inputs=p_inputs_all)
 
             self.connect('{}.W_out'.format(prev_row), '{}.W_primary'.format(curr_row))

@@ -3,10 +3,10 @@
 import numpy as np
 import openmdao.api as om
 
-from pycycle.constants import g_c
 from pycycle.element_base import Element
 from pycycle.flow_in import FlowIn
 from pycycle.thermo.thermo import Thermo
+from pycycle.unit_utils import MASS_FLOW_VEL_TO_FORCE, get_unit
 
 
 class PR_bal(om.ImplicitComponent):
@@ -71,17 +71,19 @@ class PerformanceCalcs(om.ExplicitComponent):
     def initialize(self):
         self.options.declare('lossCoef', default='Cfg',
                               desc='If set to "Cfg", then Gross Thrust Coefficient is an input.')
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
         lossCoef = self.options['lossCoef']
+        unit_system = self.options['unit_system']
 
         if not (lossCoef=="Cfg" or lossCoef=="Cv"):
             raise ValueError("lossCoef must be 'Cfg' or 'Cv', but '{}' was given.".format(lossCoef))
 
         # input
-        self.add_input('W_in', val=1.0, units='lbm/s', desc='incoming Mass flow rate')
-        self.add_input('Ps_calc', val=5.0, units='lbf/inch**2', desc='Exhaust static pressure')
-        self.add_input('V_ideal', val=10.0, units='ft/s', desc='Ideal exit velocity')
+        self.add_input('W_in', val=1.0, units=get_unit('mass_flow', unit_system), desc='incoming Mass flow rate')
+        self.add_input('Ps_calc', val=5.0, units=get_unit('pressure', unit_system), desc='Exhaust static pressure')
+        self.add_input('V_ideal', val=10.0, units=get_unit('velocity', unit_system), desc='Ideal exit velocity')
         # self.add_input('A_ideal', val=1.0, units='inch**2', desc='Ideal exit area')
 
         if lossCoef == 'Cfg':
@@ -90,13 +92,13 @@ class PerformanceCalcs(om.ExplicitComponent):
             self.add_input('Cv', val=1.0, desc='Velocity coefficient')
             self.add_input('Cang', val=1.0, desc='Angle coefficient')
             self.add_input('CmixCorr', val=1.0, desc='Mix efficiency coefficient')
-            self.add_input('V_actual', val=10.0, units='ft/s', desc='Actual exit velocity')
-            self.add_input('A_actual', val=1.0, units='inch**2', desc='Actal exit area')
-            self.add_input('Ps_actual', val=5.0, units='lbf/inch**2', desc='Actual exit static pressure')
+            self.add_input('V_actual', val=10.0, units=get_unit('velocity', unit_system), desc='Actual exit velocity')
+            self.add_input('A_actual', val=1.0, units=get_unit('area', unit_system), desc='Actal exit area')
+            self.add_input('Ps_actual', val=5.0, units=get_unit('pressure', unit_system), desc='Actual exit static pressure')
 
         # output
-        self.add_output('Fg_ideal', val=12000.0, shape=1, units='lbf', desc='Ideal gross thrust', ref=1e2, res_ref=1e3)
-        self.add_output('Fg', val=11800.0, shape=1, units='lbf', desc='Gross thrust', ref=1e2, res_ref=1e3)
+        self.add_output('Fg_ideal', val=12000.0, shape=1, units=get_unit('force', unit_system), desc='Ideal gross thrust', ref=1e2, res_ref=1e3)
+        self.add_output('Fg', val=11800.0, shape=1, units=get_unit('force', unit_system), desc='Gross thrust', ref=1e2, res_ref=1e3)
 
         self.declare_partials('Fg_ideal', ['W_in', 'V_ideal'])
         if lossCoef == 'Cfg':
@@ -108,32 +110,34 @@ class PerformanceCalcs(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         lossCoef = self.options['lossCoef']
+        conv = MASS_FLOW_VEL_TO_FORCE[self.options['unit_system']]
 
         # Calculate nozzle performance parameters
-        outputs['Fg_ideal'] = (inputs['W_in'] / g_c) * inputs['V_ideal']
+        outputs['Fg_ideal'] = conv * inputs['W_in'] * inputs['V_ideal']
 
         if lossCoef == 'Cfg':
             outputs['Fg'] = outputs['Fg_ideal'] * inputs['Cfg']
         else:
-            outputs['Fg'] = (inputs['W_in'] / g_c) * inputs['V_actual'] * inputs['Cv'] * inputs['Cang'] * inputs['CmixCorr'] + \
+            outputs['Fg'] = conv * inputs['W_in'] * inputs['V_actual'] * inputs['Cv'] * inputs['Cang'] * inputs['CmixCorr'] + \
                             (inputs['Ps_actual'] - inputs['Ps_calc']) * inputs['A_actual']
 
     def compute_partials(self, inputs, J):
         lossCoef = self.options['lossCoef']
+        conv = MASS_FLOW_VEL_TO_FORCE[self.options['unit_system']]
 
-        J['Fg_ideal', 'W_in'] = 1./ g_c * inputs['V_ideal']
-        J['Fg_ideal', 'V_ideal'] = inputs['W_in'] / g_c
+        J['Fg_ideal', 'W_in'] = conv * inputs['V_ideal']
+        J['Fg_ideal', 'V_ideal'] = conv * inputs['W_in']
 
         if lossCoef == 'Cfg':
-            J['Fg', 'W_in'] = 1./ g_c * inputs['V_ideal'] * inputs['Cfg']
-            J['Fg', 'V_ideal'] = inputs['W_in'] / g_c * inputs['Cfg']
-            J['Fg', 'Cfg'] = (inputs['W_in'] / g_c) * inputs['V_ideal']
+            J['Fg', 'W_in'] = conv * inputs['V_ideal'] * inputs['Cfg']
+            J['Fg', 'V_ideal'] = conv * inputs['W_in'] * inputs['Cfg']
+            J['Fg', 'Cfg'] = conv * inputs['W_in'] * inputs['V_ideal']
         else:
-            J['Fg', 'W_in'] = 1./g_c * inputs['V_actual'] * inputs['Cv'] * inputs['Cang'] * inputs['CmixCorr']
-            J['Fg', 'V_actual'] = (inputs['W_in'] / g_c) * inputs['Cv'] * inputs['Cang'] * inputs['CmixCorr']
-            J['Fg', 'Cv'] = (inputs['W_in'] / g_c) * inputs['V_actual'] * inputs['Cang'] * inputs['CmixCorr']
-            J['Fg', 'Cang'] = (inputs['W_in'] / g_c) * inputs['V_actual'] * inputs['Cv'] * inputs['CmixCorr']
-            J['Fg', 'CmixCorr'] = (inputs['W_in'] / g_c) * inputs['V_actual'] * inputs['Cv'] * inputs['Cang']
+            J['Fg', 'W_in'] = conv * inputs['V_actual'] * inputs['Cv'] * inputs['Cang'] * inputs['CmixCorr']
+            J['Fg', 'V_actual'] = conv * inputs['W_in'] * inputs['Cv'] * inputs['Cang'] * inputs['CmixCorr']
+            J['Fg', 'Cv'] = conv * inputs['W_in'] * inputs['V_actual'] * inputs['Cang'] * inputs['CmixCorr']
+            J['Fg', 'Cang'] = conv * inputs['W_in'] * inputs['V_actual'] * inputs['Cv'] * inputs['CmixCorr']
+            J['Fg', 'CmixCorr'] = conv * inputs['W_in'] * inputs['V_actual'] * inputs['Cv'] * inputs['Cang']
             J['Fg', 'Ps_actual'] = inputs['A_actual']
             J['Fg', 'Ps_calc'] = -inputs['A_actual']
             J['Fg', 'A_actual'] = inputs['Ps_actual'] - inputs['Ps_calc']
@@ -272,6 +276,7 @@ class Nozzle(Element):
         thermo_data = self.options['thermo_data']
         nozzType = self.options['nozzType']
         lossCoef = self.options['lossCoef']
+        unit_system = self.options['unit_system']
 
         # elements = self.options['elements']
         composition = self.Fl_I_data['Fl_I']
@@ -279,7 +284,7 @@ class Nozzle(Element):
         self.add_subsystem('mach_choked', om.IndepVarComp('MN', 1.000, ))
 
         # Create inlet flow station
-        in_flow = FlowIn(fl_name="Fl_I")
+        in_flow = FlowIn(fl_name="Fl_I", unit_system=unit_system)
         self.add_subsystem('in_flow', in_flow, promotes_inputs=['Fl_I:*'])
 
         # PR_bal = self.add_subsystem('PR_bal', BalanceComp())
@@ -300,7 +305,8 @@ class Nozzle(Element):
         throat_total = Thermo(mode='total_hP', fl_name='Fl_O:tot', 
                               method=thermo_method, 
                               thermo_kwargs={'composition':composition, 
-                                             'spec':thermo_data})
+                                             'spec':thermo_data},
+                              unit_system=unit_system)
         prom_in = [('h', 'Fl_I:tot:h'),
                    ('composition', 'Fl_I:tot:composition')]
         self.add_subsystem('throat_total', throat_total, promotes_inputs=prom_in,
@@ -311,7 +317,8 @@ class Nozzle(Element):
         throat_static_MN = Thermo(mode='static_MN', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
         prom_in = [('ht', 'Fl_I:tot:h'),
                    ('W', 'Fl_I:stat:W'),
                    ('composition', 'Fl_I:tot:composition')]
@@ -327,7 +334,8 @@ class Nozzle(Element):
         throat_static_Ps = Thermo(mode='static_Ps', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
         prom_in = [('ht', 'Fl_I:tot:h'),
                    ('W', 'Fl_I:stat:W'),
                    ('Ps', 'Ps_calc'),
@@ -342,7 +350,8 @@ class Nozzle(Element):
         ideal_flow = Thermo(mode='static_Ps', 
                             method=thermo_method, 
                             thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                            unit_system=unit_system)
         prom_in = [('ht', 'Fl_I:tot:h'),
                    ('S', 'Fl_I:tot:S'),
                    ('W', 'Fl_I:stat:W'),
@@ -386,7 +395,7 @@ class Nozzle(Element):
         self.connect('staticMN.area', 'mux.MN:area')
 
         # Calculate nozzle performance paramters based on
-        perf_calcs = PerformanceCalcs(lossCoef=lossCoef)
+        perf_calcs = PerformanceCalcs(lossCoef=lossCoef, unit_system=unit_system)
         if lossCoef == "Cv":
             other_inputs = ['Cv', 'Ps_calc']
         else:

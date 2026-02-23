@@ -27,6 +27,12 @@ class Cycle(om.Group):
         self.options.declare('thermo_data', default=species_data.janaf,
                               desc='thermodynamic data set.', 
                               recordable=False)
+        self.options.declare(
+            'unit_system',
+            default='ENG',
+            values=('ENG', 'SI'),
+            desc='Unit system for user-facing I/O.',
+        )
 
         self._elements: set[Element] = set()
 
@@ -97,7 +103,7 @@ class Cycle(om.Group):
 
 
         # loop over all child subsystems and push down cycle level options 
-        cycle_level_options = ['thermo_method', 'thermo_data', 'design']
+        cycle_level_options = ['thermo_method', 'thermo_data', 'design', 'unit_system']
         for child_name, child in self._children.items():
             for opt in cycle_level_options: 
                 if opt in child.options: 

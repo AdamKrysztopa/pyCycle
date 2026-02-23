@@ -101,6 +101,9 @@ Navigate to the `example_cycles` directory and run the example:
 ```bash
 cd example_cycles
 python electric_propulsor.py
+
+# Switch output unit system
+python electric_propulsor.py --unit-system SI
 ```
 
 **Why this method?**
@@ -128,6 +131,16 @@ testflo pycycle
 cd example_cycles
 testflo -b .
 ```
+
+### Units Matrix (ENG + SI)
+
+Run the selected dual-unit certification set and generate a report:
+
+```bash
+python example_cycles/run_units_matrix.py
+```
+
+This writes `docs/units_examples_report.md`.
 
 ## Example Output
 

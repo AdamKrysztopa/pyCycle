@@ -2,7 +2,7 @@ import openmdao.api as om
 
 from pycycle.thermo.static_ps_calc import PsCalc
 from pycycle.thermo.static_ps_resid import PsResid
-from pycycle.thermo.unit_comps import EngUnitStaticProps, EngUnitProps
+from pycycle.thermo.unit_comps import FlowUnitProps, FlowUnitStaticProps
 
 from pycycle.thermo.cea import chem_eq as cea_thermo
 from pycycle.thermo.cea import thermo_add as cea_thermo_add
@@ -33,6 +33,7 @@ class Thermo(om.Group):
         # then pass them into the individual componenents
         self.options.declare('thermo_kwargs', default={},
                              desc='Defines the thermodynamic data to be used in computations', recordable=False)
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
 
@@ -129,15 +130,16 @@ class Thermo(om.Group):
             in_vars = ('T', ('P', 'Ps'), 'h', 'S', 'gamma', 'Cp', 'Cv', 'rho', 'R')
 
         fl_name = self.options['fl_name']
+        unit_system = self.options['unit_system']
         # TODO: remove need for thermo specific data in the flow components
-        self.add_subsystem('flow', EngUnitProps(fl_name=fl_name),
+        self.add_subsystem('flow', FlowUnitProps(fl_name=fl_name, unit_system=unit_system),
                            promotes_inputs=in_vars,
                            promotes_outputs=(f'{fl_name}:*',))
 
         if 'static' in mode:
             in_vars = ('area', 'W', 'V', 'Vsonic', 'MN')
             # TODO: remove need for thermo specific data in the flow components
-            eng_units_statics = EngUnitStaticProps(fl_name=fl_name)
+            eng_units_statics = FlowUnitStaticProps(fl_name=fl_name, unit_system=unit_system)
             self.add_subsystem('flow_static', eng_units_statics,
                                promotes_inputs=in_vars,
                                promotes_outputs=(f'{fl_name}:*',))
@@ -246,7 +248,6 @@ class ThermoAdd(om.Group):
                                                              **thermo_kwargs)
         
         return self.thermo_adder.output_port_data()
-
 
 
 

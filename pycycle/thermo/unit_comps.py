@@ -1,8 +1,11 @@
 import inspect
+import warnings
+
 import numpy as np
 
 from openmdao.api import ExplicitComponent
 from openmdao.core.component import Component
+from pycycle.unit_utils import get_unit
 
 _full_out_args = inspect.getfullargspec(Component.add_output)
 _allowed_out_args = set(_full_out_args.args[3:] + _full_out_args.kwonlyargs)
@@ -12,6 +15,7 @@ class UnitCompBase(ExplicitComponent):
 
     def initialize(self):
         self.options.declare('fl_name')
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup_io(self):
         rel2meta = self._var_rel2meta
@@ -48,36 +52,64 @@ class UnitCompBase(ExplicitComponent):
     def compute(self, inputs, outputs):
         outputs._data[:] = inputs._data
 
-class EngUnitProps(UnitCompBase):
-    """only job is to provide flow in english units"""
+class FlowUnitProps(UnitCompBase):
+    """Convert thermo outputs into a selected unit system."""
 
     def setup_io(self, composition):
+        unit_system = self.options['unit_system']
 
-        self.add_input('T', val=284., units="degR", desc="Temperature")
-        self.add_input('P', val=1., units='lbf/inch**2', desc="Pressure")
-        self.add_input('h', val=1., units="Btu/lbm", desc="enthalpy")
-        self.add_input('S', val=1., units="Btu/(lbm*degR)", desc="entropy")
+        self.add_input('T', val=284., units=get_unit('temperature', unit_system), desc="Temperature")
+        self.add_input('P', val=1., units=get_unit('pressure', unit_system), desc="Pressure")
+        self.add_input('h', val=1., units=get_unit('enthalpy', unit_system), desc="enthalpy")
+        self.add_input('S', val=1., units=get_unit('entropy', unit_system), desc="entropy")
         self.add_input('gamma', val=1.4, desc="ratio of specific heats")
-        self.add_input('Cp', val=1., units="Btu/(lbm*degR)", desc="Specific heat at constant pressure")
-        self.add_input('Cv', val=1., units="Btu/(lbm*degR)", desc="Specific heat at constant volume")
-        self.add_input('rho', val=1., units="lbm/ft**3", desc="density")
-        self.add_input('R', val=1.0, units="Btu/(lbm*degR)", desc='Total specific gas constant')
+        self.add_input('Cp', val=1., units=get_unit('specific_heat', unit_system), desc="Specific heat at constant pressure")
+        self.add_input('Cv', val=1., units=get_unit('specific_heat', unit_system), desc="Specific heat at constant volume")
+        self.add_input('rho', val=1., units=get_unit('density', unit_system), desc="density")
+        self.add_input('R', val=1.0, units=get_unit('gas_constant', unit_system), desc='Total specific gas constant')
         self.add_input('composition', val=composition, desc='moles of atoms present for each element')
 
         super().setup_io()
 
 
-class EngUnitStaticProps(UnitCompBase):
+class FlowUnitStaticProps(UnitCompBase):
 
     def setup_io(self):
+        unit_system = self.options['unit_system']
 
-        self.add_input('area', val=1.0, units="inch**2")
-        self.add_input('W', val=1.0, units="lbm/s")
-        self.add_input('V', val=1.0, units="ft/s")
-        self.add_input('Vsonic', val=1.0, units="ft/s")
+        self.add_input('area', val=1.0, units=get_unit('area', unit_system))
+        self.add_input('W', val=1.0, units=get_unit('mass_flow', unit_system))
+        self.add_input('V', val=1.0, units=get_unit('velocity', unit_system))
+        self.add_input('Vsonic', val=1.0, units=get_unit('velocity', unit_system))
         self.add_input('MN', val=0.5)
 
         super().setup_io()
+
+
+class EngUnitProps(FlowUnitProps):
+    """Deprecated ENG-specific alias for FlowUnitProps."""
+
+    def __init__(self, **kwargs):
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn(
+            "Deprecation warning: `EngUnitProps` is deprecated; use `FlowUnitProps`.",
+            DeprecationWarning,
+        )
+        warnings.simplefilter('ignore', DeprecationWarning)
+        super().__init__(**kwargs)
+
+
+class EngUnitStaticProps(FlowUnitStaticProps):
+    """Deprecated ENG-specific alias for FlowUnitStaticProps."""
+
+    def __init__(self, **kwargs):
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn(
+            "Deprecation warning: `EngUnitStaticProps` is deprecated; use `FlowUnitStaticProps`.",
+            DeprecationWarning,
+        )
+        warnings.simplefilter('ignore', DeprecationWarning)
+        super().__init__(**kwargs)
 
 
 if __name__ == "__main__":
@@ -95,7 +127,7 @@ if __name__ == "__main__":
     indep.add_output('T', val=100., units='degR')
     indep.add_output('P', val=1., units='psi')
 
-    model.add_subsystem('units', EngUnitProps(thermo=thermo), promotes=['*'])
+    model.add_subsystem('units', FlowUnitProps(thermo=thermo), promotes=['*'])
 
     p.setup()
 

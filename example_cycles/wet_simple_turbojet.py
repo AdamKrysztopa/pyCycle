@@ -1,4 +1,5 @@
 import sys
+import argparse
 
 import openmdao.api as om
 
@@ -110,9 +111,10 @@ def viewer(prob, pt, file=sys.stdout):
     print a report of all the relevant cycle properties
     """
 
-    summary_data = (prob[pt+'.fc.Fl_O:stat:MN'], prob[pt+'.fc.alt'], prob[pt+'.inlet.Fl_O:stat:W'],
-                    prob[pt+'.perf.Fn'], prob[pt+'.perf.Fg'], prob[pt+'.inlet.F_ram'],
-                    prob[pt+'.perf.OPR'], prob[pt+'.perf.TSFC'])
+    summary_data = tuple(float(prob[path][0]) for path in (
+                    pt+'.fc.Fl_O:stat:MN', pt+'.fc.alt', pt+'.inlet.Fl_O:stat:W',
+                    pt+'.perf.Fn', pt+'.perf.Fg', pt+'.inlet.F_ram',
+                    pt+'.perf.OPR', pt+'.perf.TSFC'))
 
     print(file=file, flush=True)
     print(file=file, flush=True)
@@ -149,11 +151,15 @@ def viewer(prob, pt, file=sys.stdout):
     pyc.print_shaft(prob, shaft_full_names, file=file)
 
 class MPWetTurbojet(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         # Create design instance of model
-        self.pyc_add_pnt('DESIGN', WetTurbojet(thermo_method='CEA'))
+        self.pyc_add_pnt('DESIGN', WetTurbojet(thermo_method='CEA', unit_system=unit_system))
 
         self.set_input_defaults('DESIGN.fc.alt', 0.0, units='ft'),
         self.set_input_defaults('DESIGN.fc.MN', 0.000001),
@@ -175,7 +181,7 @@ class MPWetTurbojet(pyc.MPCycle):
         self.od_pwrs = [11000.0,]
 
         for i, pt in enumerate(self.od_pts):
-            self.pyc_add_pnt(pt, WetTurbojet(design=False, thermo_method='CEA'))
+            self.pyc_add_pnt(pt, WetTurbojet(design=False, thermo_method='CEA', unit_system=unit_system))
 
             self.set_input_defaults(pt+'.fc.MN', self.od_MNs[i]),
             self.set_input_defaults(pt+'.fc.alt', self.od_alts[i], units='ft'),
@@ -191,10 +197,13 @@ class MPWetTurbojet(pyc.MPCycle):
 if __name__ == "__main__":
 
     import time
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
     prob = om.Problem()
 
-    prob.model = mp_wet_turbojet = MPWetTurbojet()
+    prob.model = mp_wet_turbojet = MPWetTurbojet(unit_system=args.unit_system)
 
     prob.setup()
 

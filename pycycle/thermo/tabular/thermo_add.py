@@ -88,8 +88,8 @@ class ThermoAdd(om.ExplicitComponent):
 
         mix_mode = self.options['mix_mode']
 
-        compo_in = np.asarray(inputs['Fl_I:tot:composition'], dtype=float)
-        W_in = float(np.atleast_1d(inputs['Fl_I:stat:W']).ravel()[0])
+        compo_in = np.asarray(inputs['Fl_I:tot:composition'])
+        W_in = np.atleast_1d(inputs['Fl_I:stat:W']).ravel()[0]
         # composition vector is always given as vector of <something>-to-air ratios
         W_air_in = W_in / (1 + np.sum(compo_in))
         W_other_in = W_air_in * compo_in
@@ -107,12 +107,12 @@ class ThermoAdd(om.ExplicitComponent):
         if mix_mode == "reactant": 
 
             for mix_name in self.mix_names:  
-                ratio = np.atleast_1d(inputs[f'{mix_name}:ratio']).ravel()[0].item()  # scalar for reactant mode
+                ratio = np.atleast_1d(inputs[f'{mix_name}:ratio']).ravel()[0]  # keep complex-step safe
 
                 W_air_mix = W_air_in  # for reactant mode, we reference from the incoming air
                 W_other_mix = W_air_mix * ratio
                 outputs[f'{mix_name}:W'] = W_other_mix
-                W_other_out[self.idx_compo] += W_other_mix
+                W_other_out[self.idx_compo] = W_other_out[self.idx_compo] + W_other_mix
                 W_out += W_other_mix
                 W_times_h += W_other_mix * inputs[f'{mix_name}:h']
 
@@ -127,7 +127,8 @@ class ThermoAdd(om.ExplicitComponent):
 
                 W_mix = inputs[f'{mix_name}:W']
                 W_air_mix = W_mix/(1+np.sum(compo_mix))
-                W_other_out += W_air_mix*compo_mix
+                # Avoid in-place add so dtype can upcast during complex-step.
+                W_other_out = W_other_out + W_air_mix * compo_mix
                 W_out += W_mix
                 W_air_out += W_air_mix
                 W_times_h += W_mix*inputs[f'{mix_name}:h']

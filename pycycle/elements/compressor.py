@@ -4,27 +4,32 @@ from collections.abc import Iterable
 import numpy as np
 import openmdao.api as om
 
-from pycycle.constants import BTU_s2HP, HP_per_RPM_to_FT_LBF, P_STDeng, T_STDeng
+from pycycle.constants import BTU_s2HP, HP_per_RPM_to_FT_LBF
 from pycycle.element_base import Element
 from pycycle.elements.compressor_map import CompressorMap
 from pycycle.flow_in import FlowIn
 from pycycle.maps.ncp01 import NCP01
 from pycycle.passthrough import PassThrough
 from pycycle.thermo.thermo import Thermo
+from pycycle.unit_utils import STD_DAY, get_unit
 
 
 class CorrectedInputsCalc(om.ExplicitComponent):
     """Compute design corrected flow (Wc) and design corrected speed (Nc)"""
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
+        unit_system = self.options['unit_system']
         # inputs
-        self.add_input('Tt', val=500., units='degR',
+        self.add_input('Tt', val=500., units=get_unit('temperature', unit_system),
                        desc='incoming temperature')
-        self.add_input('Pt', val=14., units='psi', desc='incoming pressure')
-        self.add_input('W_in', val=30.0, units='lbm/s', desc='mass flow')
+        self.add_input('Pt', val=14., units=get_unit('pressure', unit_system), desc='incoming pressure')
+        self.add_input('W_in', val=30.0, units=get_unit('mass_flow', unit_system), desc='mass flow')
         self.add_input('Nmech', val=1000.0, units='rpm', desc='shaft speed')
         # outputs
-        self.add_output('Wc', val=30.0, units='lbm/s',
+        self.add_output('Wc', val=30.0, units=get_unit('mass_flow', unit_system),
                         desc='corrected mass flow')
         self.add_output('Nc', val=100., lower=1e-5,
                         units='rpm', desc='corrected shaft speed')
@@ -33,10 +38,11 @@ class CorrectedInputsCalc(om.ExplicitComponent):
         self.declare_partials('Nc', ['Nmech', 'Tt'])
 
     def compute(self, inputs, outputs):
+        std_day = STD_DAY[self.options['unit_system']]
 
-        self.delta = inputs['Pt'] / P_STDeng
+        self.delta = inputs['Pt'] / std_day['P']
         self.W = inputs['W_in']
-        self.theta = inputs['Tt'] / T_STDeng
+        self.theta = inputs['Tt'] / std_day['T']
 
         outputs['Wc'] = self.W * self.theta**0.5 / self.delta
         outputs['Nc'] = inputs['Nmech'] * self.theta**-0.5
@@ -45,12 +51,13 @@ class CorrectedInputsCalc(om.ExplicitComponent):
 
         theta = self.theta
         delta = self.delta
+        std_day = STD_DAY[self.options['unit_system']]
 
-        J['Wc', 'Tt'] = 0.5 * self.W / delta * theta**-0.5 / T_STDeng
-        J['Wc', 'Pt'] = -self.W * theta**0.5 * delta**-2. / P_STDeng
+        J['Wc', 'Tt'] = 0.5 * self.W / delta * theta**-0.5 / std_day['T']
+        J['Wc', 'Pt'] = -self.W * theta**0.5 * delta**-2. / std_day['P']
         J['Wc', 'W_in'] = theta**0.5 / delta
         J['Nc', 'Nmech'] = theta**-0.5
-        J['Nc', 'Tt'] = -0.5 * inputs['Nmech'] * theta**-1.5 / T_STDeng
+        J['Nc', 'Tt'] = -0.5 * inputs['Nmech'] * theta**-1.5 / std_day['T']
 
 class eff_poly_calc(om.ExplicitComponent):
     """ Calculate polytropic efficiency for compressor"""
@@ -433,14 +440,15 @@ class Compressor(Element):
         bleeds = self.options['bleed_names']
         thermo_data = self.options['thermo_data']
         statics = self.options['statics']
+        unit_system = self.options['unit_system']
 
         composition = self.Fl_I_data['Fl_I']
 
         # Create inlet flow station
-        flow_in = FlowIn(fl_name='Fl_I')
+        flow_in = FlowIn(fl_name='Fl_I', unit_system=unit_system)
         self.add_subsystem('flow_in', flow_in, promotes_inputs=['Fl_I:*'])
 
-        self.add_subsystem('corrinputs', CorrectedInputsCalc(),
+        self.add_subsystem('corrinputs', CorrectedInputsCalc(unit_system=unit_system),
                            promotes_inputs=(
                                'Nmech', ('W_in', 'Fl_I:stat:W'),
                                ('Pt', 'Fl_I:tot:P'), ('Tt', 'Fl_I:tot:T')),
@@ -461,7 +469,8 @@ class Compressor(Element):
         ideal_flow = Thermo(mode='total_SP',
                             method=thermo_method,
                             thermo_kwargs={'composition':composition,
-                                           'spec':thermo_data})
+                                           'spec':thermo_data},
+                            unit_system=unit_system)
         self.add_subsystem('ideal_flow', ideal_flow,
                            promotes_inputs=[('S', 'Fl_I:tot:S'),
                                             ('composition', 'Fl_I:tot:composition')])
@@ -476,7 +485,8 @@ class Compressor(Element):
         real_flow = Thermo(mode='total_hP', fl_name='Fl_O:tot',
                                   method=thermo_method,
                                   thermo_kwargs={'composition':composition,
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                           unit_system=unit_system)
         self.add_subsystem('real_flow', real_flow,
                            promotes_inputs=[
                                ('composition', 'Fl_I:tot:composition')],
@@ -515,7 +525,8 @@ class Compressor(Element):
             bleed_flow = Thermo(mode='total_hP', fl_name=BN + ":tot",
                                   method=thermo_method,
                                   thermo_kwargs={'composition':composition,
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                               unit_system=unit_system)
             self.add_subsystem(BN + '_flow', bleed_flow,
                                promotes_inputs=[
                                    ('composition', 'Fl_I:tot:composition')],
@@ -530,7 +541,8 @@ class Compressor(Element):
                 out_stat = Thermo(mode='static_MN', fl_name='Fl_O:stat',
                                   method=thermo_method,
                                   thermo_kwargs={'composition':composition,
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 self.add_subsystem('out_stat', out_stat,
                                    promotes_inputs=[
                                        'MN', ('composition', 'Fl_I:tot:composition')],
@@ -545,7 +557,8 @@ class Compressor(Element):
                 out_stat = Thermo(mode='static_A', fl_name='Fl_O:stat',
                                   method=thermo_method,
                                   thermo_kwargs={'composition':composition,
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 self.add_subsystem('out_stat', out_stat,
                                    promotes_inputs=[
                                        'area', ('composition', 'Fl_I:tot:composition')],

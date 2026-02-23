@@ -1,4 +1,5 @@
 
+import argparse
 import openmdao.api as om
 
 import pycycle.api as pyc
@@ -224,10 +225,14 @@ def page_viewer(point):
 
 
 class MPMixedFlowTurbofan(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
-        self.pyc_add_pnt('DESIGN', MixedFlowTurbofan(design=True, thermo_method='CEA'))
+        self.pyc_add_pnt('DESIGN', MixedFlowTurbofan(design=True, thermo_method='CEA', unit_system=unit_system))
 
         self.set_input_defaults('DESIGN.balance.rhs:BPR', 1.05 ,units=None) # defined as 1 over 2
         self.set_input_defaults('DESIGN.inlet.MN', 0.751)
@@ -277,7 +282,7 @@ class MPMixedFlowTurbofan(pyc.MPCycle):
         self.od_MNs = [0.8, ]
 
         for i,pt in enumerate(self.od_pts):
-            self.pyc_add_pnt(pt, MixedFlowTurbofan(design=False, thermo_method='CEA'))
+            self.pyc_add_pnt(pt, MixedFlowTurbofan(design=False, thermo_method='CEA', unit_system=unit_system))
 
             self.set_input_defaults(pt+'.balance.rhs:FAR_core', self.od_T4s[i], units='degR')
             self.set_input_defaults(pt+'.fc.alt', self.od_alts[i], units='ft')
@@ -334,10 +339,13 @@ class MPMixedFlowTurbofan(pyc.MPCycle):
 if __name__ == "__main__":
     import time
     from openmdao.api import Problem
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
     prob = Problem()
 
-    prob.model = mp_mixedflow = MPMixedFlowTurbofan()
+    prob.model = mp_mixedflow = MPMixedFlowTurbofan(unit_system=args.unit_system)
 
     prob.setup()
 
@@ -426,4 +434,3 @@ if __name__ == "__main__":
 
     # print()
     # print("time", time.time() - st)
-

@@ -96,11 +96,12 @@ class Splitter(Element):
         thermo_data = self.options['thermo_data']
         statics = self.options['statics']
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         composition = self.Fl_I_data['Fl_I']
 
         # Create inlet flowstation
-        flow_in = FlowIn(fl_name='Fl_I')
+        flow_in = FlowIn(fl_name='Fl_I', unit_system=unit_system)
         self.add_subsystem('flow_in', flow_in, promotes_inputs=('Fl_I:*',))
 
         # Split the flows
@@ -110,7 +111,8 @@ class Splitter(Element):
         real_flow1 = Thermo(mode='total_TP', fl_name='Fl_O1:tot', 
                             method=thermo_method, 
                             thermo_kwargs={'composition':composition, 
-                                          'spec':thermo_data})
+                                          'spec':thermo_data},
+                            unit_system=unit_system)
         self.add_subsystem('real_flow1', real_flow1,
                            promotes_inputs=(('composition', 'Fl_I:tot:composition'),
                                             ('P', 'Fl_I:tot:P'),
@@ -121,7 +123,8 @@ class Splitter(Element):
         real_flow2 = Thermo(mode='total_TP', fl_name='Fl_O2:tot', 
                             method=thermo_method, 
                             thermo_kwargs={'composition':composition, 
-                                          'spec':thermo_data})
+                                          'spec':thermo_data},
+                            unit_system=unit_system)
         self.add_subsystem('real_flow2', real_flow2, promotes_inputs=(('composition', 'Fl_I:tot:composition'),
                                             ('P', 'Fl_I:tot:P'),
                                             ('T', 'Fl_I:tot:T')),
@@ -133,7 +136,8 @@ class Splitter(Element):
                 out1_stat = Thermo(mode='static_MN', fl_name='Fl_O1:stat', 
                                    method=thermo_method, 
                                    thermo_kwargs={'composition':composition, 
-                                                  'spec':thermo_data})
+                                                  'spec':thermo_data},
+                                   unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            ('MN','MN1')]
                 prom_out = ['Fl_O1:stat:*']
@@ -148,7 +152,8 @@ class Splitter(Element):
                 out2_stat = Thermo(mode='static_MN', fl_name='Fl_O2:stat', 
                                    method=thermo_method, 
                                    thermo_kwargs={'composition':composition, 
-                                                  'spec':thermo_data})
+                                                  'spec':thermo_data},
+                                   unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            ('MN','MN2')]
                 prom_out = ['Fl_O2:stat:*']
@@ -165,7 +170,8 @@ class Splitter(Element):
                 out1_stat = Thermo(mode='static_A', fl_name='Fl_O1:stat', 
                                    method=thermo_method, 
                                    thermo_kwargs={'composition':composition, 
-                                                  'spec':thermo_data})
+                                                  'spec':thermo_data},
+                                   unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            ('area','area1')]
                 prom_out = ['Fl_O1:stat:*']
@@ -180,7 +186,8 @@ class Splitter(Element):
                 out2_stat = Thermo(mode='static_A', fl_name='Fl_O2:stat', 
                                    method=thermo_method, 
                                    thermo_kwargs={'composition':composition, 
-                                                  'spec':thermo_data})
+                                                  'spec':thermo_data},
+                                   unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            ('area','area2')]
                 prom_out = ['Fl_O2:stat:*']

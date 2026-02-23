@@ -2,11 +2,11 @@
 
 import openmdao.api as om
 
-from pycycle.constants import g_c
 from pycycle.element_base import Element
 from pycycle.flow_in import FlowIn
 from pycycle.passthrough import PassThrough
 from pycycle.thermo.thermo import Thermo
+from pycycle.unit_utils import MASS_FLOW_VEL_TO_FORCE, get_unit
 
 #from pycycle.elements.test.util import regression_generator
 
@@ -61,29 +61,35 @@ class Calcs(om.ExplicitComponent):
     Performs inlet engineering calculations.
     """
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
+        unit_system = self.options['unit_system']
         # inputs
-        self.add_input('Pt_in', val=5.0, units='lbf/inch**2', desc='Entrance total pressure')
+        self.add_input('Pt_in', val=5.0, units=get_unit('pressure', unit_system), desc='Entrance total pressure')
         self.add_input('ram_recovery', val=1.0, desc='Ram recovery')
-        self.add_input('V_in', val=0.0, units='ft/s', desc='Entrance velocity')
-        self.add_input('W_in', val=100.0, units='lbm/s', desc='Entrance flow rate')
+        self.add_input('V_in', val=0.0, units=get_unit('velocity', unit_system), desc='Entrance velocity')
+        self.add_input('W_in', val=100.0, units=get_unit('mass_flow', unit_system), desc='Entrance flow rate')
 
         # outputs
-        self.add_output('Pt_out', val=14.696, units='lbf/inch**2', desc='Exit total pressure')
-        self.add_output('F_ram', val=1.0, units='lbf', desc='Ram drag')
+        self.add_output('Pt_out', val=14.696, units=get_unit('pressure', unit_system), desc='Exit total pressure')
+        self.add_output('F_ram', val=1.0, units=get_unit('force', unit_system), desc='Ram drag')
 
         self.declare_partials('Pt_out', ['Pt_in', 'ram_recovery'])
         self.declare_partials('F_ram', ['V_in', 'W_in'])
 
     def compute(self, inputs, outputs):
+        conv = MASS_FLOW_VEL_TO_FORCE[self.options['unit_system']]
         outputs['Pt_out'] = inputs['Pt_in'] * inputs['ram_recovery']
-        outputs['F_ram'] = inputs['W_in'] * inputs['V_in'] / g_c
+        outputs['F_ram'] = conv * inputs['W_in'] * inputs['V_in']
 
     def compute_partials(self, inputs, J):
         J['Pt_out', 'Pt_in'] = inputs['ram_recovery']
         J['Pt_out', 'ram_recovery'] = inputs['Pt_in']
-        J['F_ram', 'V_in'] = inputs['W_in'] / g_c
-        J['F_ram', 'W_in'] = inputs['V_in'] / g_c
+        conv = MASS_FLOW_VEL_TO_FORCE[self.options['unit_system']]
+        J['F_ram', 'V_in'] = conv * inputs['W_in']
+        J['F_ram', 'W_in'] = conv * inputs['V_in']
 
 
 class Inlet(Element):
@@ -140,16 +146,17 @@ class Inlet(Element):
         thermo_data = self.options['thermo_data']
         statics = self.options['statics']
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         # elements = self.options['elements']
         composition = self.Fl_I_data['Fl_I']
 
         # Create inlet flow station
-        flow_in = FlowIn(fl_name='Fl_I')
+        flow_in = FlowIn(fl_name='Fl_I', unit_system=unit_system)
         self.add_subsystem('flow_in', flow_in, promotes=['Fl_I:tot:*', 'Fl_I:stat:*'])
         
         # Perform inlet engineering calculations
-        self.add_subsystem('calcs_inlet', Calcs(),
+        self.add_subsystem('calcs_inlet', Calcs(unit_system=unit_system),
                            promotes_inputs=['ram_recovery', ('Pt_in', 'Fl_I:tot:P'),
                                             ('V_in', 'Fl_I:stat:V'), ('W_in', 'Fl_I:stat:W')],
                            promotes_outputs=['F_ram'])
@@ -158,7 +165,8 @@ class Inlet(Element):
         real_flow = Thermo(mode='total_TP', fl_name='Fl_O:tot', 
                            method=thermo_method, 
                            thermo_kwargs={'composition':composition, 
-                                          'spec':thermo_data})
+                                          'spec':thermo_data},
+                           unit_system=unit_system)
         self.add_subsystem('real_flow', real_flow,
                            promotes_inputs=[('T', 'Fl_I:tot:T'), ('composition', 'Fl_I:tot:composition')],
                            promotes_outputs=['Fl_O:*'])
@@ -173,7 +181,8 @@ class Inlet(Element):
                 out_stat = Thermo(mode='static_MN', fl_name='Fl_O:stat', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 self.add_subsystem('out_stat', out_stat,
                                    promotes_inputs=[('composition', 'Fl_I:tot:composition'), ('W', 'Fl_I:stat:W'), 'MN'],
                                    promotes_outputs=['Fl_O:stat:*'])
@@ -188,7 +197,8 @@ class Inlet(Element):
                 out_stat = Thermo(mode='static_A', fl_name='Fl_O:stat', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 prom_in = [('composition', 'Fl_I:tot:composition'),
                            ('W', 'Fl_I:stat:W'),
                            'area']

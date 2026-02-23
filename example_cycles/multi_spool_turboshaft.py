@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import argparse
 
 import openmdao.api as om
 
@@ -206,10 +207,14 @@ def viewer(prob, pt, file=sys.stdout):
     pyc.print_bleed(prob, bleed_full_names, file=file)
 
 class MPMultiSpool(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
-        self.pyc_add_pnt('DESIGN', MultiSpoolTurboshaft(thermo_method='CEA'))
+        self.pyc_add_pnt('DESIGN', MultiSpoolTurboshaft(thermo_method='CEA', unit_system=unit_system))
 
         self.set_input_defaults('DESIGN.inlet.MN', 0.4),
         self.set_input_defaults('DESIGN.duct1.MN', 0.4),
@@ -257,7 +262,7 @@ class MPMultiSpool(pyc.MPCycle):
         self.od_MNs = [.5,]
 
         for i, pt in enumerate(self.od_pts):
-            self.pyc_add_pnt(pt, MultiSpoolTurboshaft(design=False, thermo_method='CEA', maxiter=10))
+            self.pyc_add_pnt(pt, MultiSpoolTurboshaft(design=False, thermo_method='CEA', maxiter=10, unit_system=unit_system))
 
             self.set_input_defaults(pt+'.balance.rhs:FAR', self.od_pwrs[i], units='hp')
             self.set_input_defaults(pt+'.LP_Nmech', self.od_Nmechs[i], units='rpm')
@@ -311,10 +316,13 @@ class MPMultiSpool(pyc.MPCycle):
 if __name__ == "__main__":
 
     import time
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
     prob = om.Problem()
 
-    prob.model = mp_multispool = MPMultiSpool()
+    prob.model = mp_multispool = MPMultiSpool(unit_system=args.unit_system)
 
     prob.setup()
 

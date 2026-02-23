@@ -60,6 +60,12 @@ class Element(om.Group):
             desc='Method for computing thermodynamic properties',
         )
         self.options.declare(
+            'unit_system',
+            default='ENG',
+            values=('ENG', 'SI'),
+            desc='Unit system for user-facing I/O.',
+        )
+        self.options.declare(
             'linesearch_callback',
             default=None,
             recordable=False,
@@ -121,7 +127,6 @@ class Element(om.Group):
         )
 
     # TODO: at end of setup, compare all the ports to whats in the port data and make sure that there is nothing missing
-
 
 
 

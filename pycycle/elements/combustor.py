@@ -81,6 +81,7 @@ class Combustor(Element):
     def setup(self):
         thermo_method = self.options['thermo_method']
         thermo_data = self.options['thermo_data']
+        unit_system = self.options['unit_system']
 
         air_fuel_composition = self.Fl_O_data['Fl_O']
         design = self.options['design']
@@ -88,7 +89,7 @@ class Combustor(Element):
 
 
         # Create combustor flow station
-        in_flow = FlowIn(fl_name='Fl_I')
+        in_flow = FlowIn(fl_name='Fl_I', unit_system=unit_system)
         self.add_subsystem('in_flow', in_flow, promotes=['Fl_I:tot:*', 'Fl_I:stat:*'])
 
         self.add_subsystem('mix_fuel', self.thermo_add_comp,
@@ -102,7 +103,8 @@ class Combustor(Element):
         vit_flow = Thermo(mode='total_hP', fl_name='Fl_O:tot', 
                           method=thermo_method, 
                           thermo_kwargs={'composition':air_fuel_composition, 
-                                         'spec':thermo_data})
+                                         'spec':thermo_data},
+                          unit_system=unit_system)
         self.add_subsystem('vitiated_flow', vit_flow, promotes_outputs=['Fl_O:*'])
         self.connect("mix_fuel.mass_avg_h", "vitiated_flow.h")
         self.connect("mix_fuel.composition_out", "vitiated_flow.composition")
@@ -115,7 +117,8 @@ class Combustor(Element):
                 out_stat = Thermo(mode='static_MN', fl_name='Fl_O:stat', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':air_fuel_composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 prom_in = ['MN']
                 prom_out = ['Fl_O:stat:*']
                 self.add_subsystem('out_stat', out_stat, promotes_inputs=prom_in,
@@ -133,7 +136,8 @@ class Combustor(Element):
                 out_stat = Thermo(mode='static_A', fl_name='Fl_O:stat', 
                                   method=thermo_method, 
                                   thermo_kwargs={'composition':air_fuel_composition, 
-                                                 'spec':thermo_data})
+                                                 'spec':thermo_data},
+                                  unit_system=unit_system)
                 prom_in = ['area']
                 prom_out = ['Fl_O:stat:*']
                 self.add_subsystem('out_stat', out_stat, promotes_inputs=prom_in,

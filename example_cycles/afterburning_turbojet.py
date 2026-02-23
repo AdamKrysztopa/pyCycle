@@ -1,4 +1,5 @@
 import sys
+import argparse
 
 import numpy as np
 import openmdao.api as om
@@ -167,11 +168,15 @@ def viewer(prob, pt, file=sys.stdout):
 
 
 class MPABTurbojet(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         # DESIGN CASE
-        self.pyc_add_pnt('DESIGN', ABTurbojet(design=True, thermo_method='CEA'))
+        self.pyc_add_pnt('DESIGN', ABTurbojet(design=True, thermo_method='CEA', unit_system=unit_system))
 
         self.set_input_defaults('DESIGN.Nmech', 8070.0, units='rpm'),
         self.set_input_defaults('DESIGN.inlet.MN', 0.60),
@@ -204,7 +209,7 @@ class MPABTurbojet(pyc.MPCycle):
         self.od_Rlines = [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 
         for i, pt in enumerate(self.od_pts):
-            self.pyc_add_pnt(pt, ABTurbojet(design=False, thermo_method='CEA'))
+            self.pyc_add_pnt(pt, ABTurbojet(design=False, thermo_method='CEA', unit_system=unit_system))
 
             self.set_input_defaults(pt+'.fc.MN', val=self.od_MNs[i])
             self.set_input_defaults(pt+'.fc.alt', val=self.od_alts[i], units='ft')
@@ -234,10 +239,13 @@ class MPABTurbojet(pyc.MPCycle):
 if __name__ == "__main__":
 
     import time
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
     prob = om.Problem()
 
-    prob.model = mp_abturbojet = MPABTurbojet()
+    prob.model = mp_abturbojet = MPABTurbojet(unit_system=args.unit_system)
 
     prob.setup()
 

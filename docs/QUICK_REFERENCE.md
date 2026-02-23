@@ -23,6 +23,9 @@ cd example_cycles
 # Run an example
 python electric_propulsor.py
 
+# Run an example with SI outputs
+python electric_propulsor.py --unit-system SI
+
 # Run all tests
 testflo pycycle
 
@@ -69,6 +72,8 @@ import pycycle.api as pyc
 
 prob = om.Problem()
 prob.model = pyc.Cycle(design=True)
+# Optional explicit unit system selection
+# prob.model = pyc.Cycle(design=True, unit_system='SI')
 ```
 
 ### Add Components

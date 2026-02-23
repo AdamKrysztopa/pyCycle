@@ -1,4 +1,5 @@
 import sys
+import argparse
 
 import numpy as np
 import openmdao.api as om
@@ -163,11 +164,15 @@ def viewer(prob, pt, file=sys.stdout):
     pyc.print_shaft(prob, shaft_full_names, file=file)
 
 class MPSingleSpool(pyc.MPCycle):
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+        super().initialize()
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         # Create design instance of model
-        self.pyc_add_pnt('DESIGN', SingleSpoolTurboshaft(thermo_method='CEA'))
+        self.pyc_add_pnt('DESIGN', SingleSpoolTurboshaft(thermo_method='CEA', unit_system=unit_system))
 
         self.set_input_defaults('DESIGN.HP_Nmech', 8070.0, units='rpm')
         self.set_input_defaults('DESIGN.LP_Nmech', 5000.0, units='rpm')
@@ -186,7 +191,7 @@ class MPSingleSpool(pyc.MPCycle):
         self.od_nmechs =[5000., 5000.]
 
         for i, pt in enumerate(self.od_pts):
-            self.pyc_add_pnt(pt, SingleSpoolTurboshaft(design=False, thermo_method='CEA'))
+            self.pyc_add_pnt(pt, SingleSpoolTurboshaft(design=False, thermo_method='CEA', unit_system=unit_system))
 
             self.set_input_defaults(pt+'.fc.alt', self.od_alts[i], units='ft')
             self.set_input_defaults(pt+'.fc.MN', self.od_MNs[i])
@@ -203,10 +208,13 @@ class MPSingleSpool(pyc.MPCycle):
 if __name__ == "__main__":
 
     import time
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unit-system', default='ENG', choices=('ENG', 'SI'))
+    args = parser.parse_args()
 
     prob = om.Problem()
 
-    prob.model = mp_single_spool = MPSingleSpool()
+    prob.model = mp_single_spool = MPSingleSpool(unit_system=args.unit_system)
 
     prob.setup()
 

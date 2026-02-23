@@ -25,6 +25,11 @@ Still major NPSS-parity gaps:
 - No standard bleed reinjection element.
 - No cycle-wide `unit_system` support, with explicit `g_c` usage still active.
 
+Status update (current branch work):
+- `unit_system` plumbing (`ENG`/`SI`) has been added to `Cycle`/`Element` and propagated to element thermo/flow components.
+- Flow output wrappers are now unit-system aware (`FlowUnitProps` / `FlowUnitStaticProps`) with compatibility aliases retained.
+- Explicit `g_c` usage has been removed from inlet/nozzle performance equations.
+
 ## Phase 0 (Immediate): NPSS Validation Harness
 
 Before adding more features, lock down how fidelity is measured.
