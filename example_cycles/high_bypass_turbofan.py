@@ -4,6 +4,7 @@ import argparse
 import openmdao.api as om
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
 
 
 class HBTF(pyc.Cycle):
@@ -20,6 +21,7 @@ class HBTF(pyc.Cycle):
 
         #Create any relavent short hands here:
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         USE_TABULAR = False
         if USE_TABULAR:
@@ -105,26 +107,26 @@ class HBTF(pyc.Cycle):
 
         balance = self.add_subsystem('balance', om.BalanceComp())
         if design:
-            balance.add_balance('W', units='lbm/s', eq_units='lbf')
+            balance.add_balance('W', units=get_unit('mass_flow', unit_system), eq_units=get_unit('force', unit_system))
             #Here balance.W is implicit state variable that is the OUTPUT of balance object
             self.connect('balance.W', 'fc.W') #Connect the output of balance to the relevant input
             self.connect('perf.Fn', 'balance.lhs:W')       #This statement makes perf.Fn the LHS of the balance eqn.
             self.promotes('balance', inputs=[('rhs:W', 'Fn_DES')])
 
-            balance.add_balance('FAR', eq_units='degR', lower=1e-4, val=.017)
+            balance.add_balance('FAR', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017)
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR')
             self.promotes('balance', inputs=[('rhs:FAR', 'T4_MAX')])
 
             # Note that for the following two balances the mult val is set to -1 so that the NET torque is zero
             balance.add_balance('lpt_PR', val=1.5, lower=1.001, upper=8,
-                                eq_units='hp', use_mult=True, mult_val=-1)
+                                eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.lpt_PR', 'lpt.PR')
             self.connect('lp_shaft.pwr_in_real', 'balance.lhs:lpt_PR')
             self.connect('lp_shaft.pwr_out_real', 'balance.rhs:lpt_PR')
 
             balance.add_balance('hpt_PR', val=1.5, lower=1.001, upper=8,
-                                eq_units='hp', use_mult=True, mult_val=-1)
+                                eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.hpt_PR', 'hpt.PR')
             self.connect('hp_shaft.pwr_in_real', 'balance.lhs:hpt_PR')
             self.connect('hp_shaft.pwr_out_real', 'balance.rhs:hpt_PR')
@@ -146,33 +148,33 @@ class HBTF(pyc.Cycle):
             #           (hp_Nmech)   HP spool speed to balance shaft power on the high spool
 
             if self.options['throttle_mode'] == 'T4':
-                balance.add_balance('FAR', val=0.017, lower=1e-4, eq_units='degR')
+                balance.add_balance('FAR', val=0.017, lower=1e-4, eq_units=get_unit('temperature', unit_system))
                 self.connect('balance.FAR', 'burner.Fl_I:FAR')
                 self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR')
                 self.promotes('balance', inputs=[('rhs:FAR', 'T4_MAX')])
 
             elif self.options['throttle_mode'] == 'percent_thrust':
-                balance.add_balance('FAR', val=0.017, lower=1e-4, eq_units='lbf', use_mult=True)
+                balance.add_balance('FAR', val=0.017, lower=1e-4, eq_units=get_unit('force', unit_system), use_mult=True)
                 self.connect('balance.FAR', 'burner.Fl_I:FAR')
                 self.connect('perf.Fn', 'balance.rhs:FAR')
                 self.promotes('balance', inputs=[('mult:FAR', 'PC'), ('lhs:FAR', 'Fn_max')])
 
 
-            balance.add_balance('W', units='lbm/s', lower=10., upper=1000., eq_units='inch**2')
+            balance.add_balance('W', units=get_unit('mass_flow', unit_system), lower=10., upper=1000., eq_units=get_unit('area', unit_system))
             self.connect('balance.W', 'fc.W')
             self.connect('core_nozz.Throat:stat:area', 'balance.lhs:W')
 
-            balance.add_balance('BPR', lower=2., upper=10., eq_units='inch**2')
+            balance.add_balance('BPR', lower=2., upper=10., eq_units=get_unit('area', unit_system))
             self.connect('balance.BPR', 'splitter.BPR')
             self.connect('byp_nozz.Throat:stat:area', 'balance.lhs:BPR')
 
             # Again for the following two balances the mult val is set to -1 so that the NET torque is zero
-            balance.add_balance('lp_Nmech', val=1.5, units='rpm', lower=500., eq_units='hp', use_mult=True, mult_val=-1)
+            balance.add_balance('lp_Nmech', val=1.5, units='rpm', lower=500., eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.lp_Nmech', 'LP_Nmech')
             self.connect('lp_shaft.pwr_in_real', 'balance.lhs:lp_Nmech')
             self.connect('lp_shaft.pwr_out_real', 'balance.rhs:lp_Nmech')
 
-            balance.add_balance('hp_Nmech', val=1.5, units='rpm', lower=500., eq_units='hp', use_mult=True, mult_val=-1)
+            balance.add_balance('hp_Nmech', val=1.5, units='rpm', lower=500., eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.hp_Nmech', 'HP_Nmech')
             self.connect('hp_shaft.pwr_in_real', 'balance.lhs:hp_Nmech')
             self.connect('hp_shaft.pwr_out_real', 'balance.rhs:hp_Nmech')
@@ -410,21 +412,21 @@ if __name__ == "__main__":
 
     # Set initial guesses for balances
     prob['DESIGN.balance.FAR'] = 0.025
-    prob['DESIGN.balance.W'] = 100.
+    prob.set_val('DESIGN.balance.W', 100., units='lbm/s')
     prob['DESIGN.balance.lpt_PR'] = 4.0
     prob['DESIGN.balance.hpt_PR'] = 3.0
-    prob['DESIGN.fc.balance.Pt'] = 5.2
-    prob['DESIGN.fc.balance.Tt'] = 440.0
+    prob.set_val('DESIGN.fc.balance.Pt', 5.2, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 440.0, units='degR')
 
 
     for pt in ['OD_full_pwr', 'OD_part_pwr']:
 
         # initial guesses
         prob[pt+'.balance.FAR'] = 0.02467
-        prob[pt+'.balance.W'] = 300
+        prob.set_val(pt+'.balance.W', 300, units='lbm/s')
         prob[pt+'.balance.BPR'] = 5.105
-        prob[pt+'.balance.lp_Nmech'] = 5000
-        prob[pt+'.balance.hp_Nmech'] = 15000
+        prob.set_val(pt+'.balance.lp_Nmech', 5000, units='rpm')
+        prob.set_val(pt+'.balance.hp_Nmech', 15000, units='rpm')
         prob[pt+'.hpt.PR'] = 3.
         prob[pt+'.lpt.PR'] = 4.
         prob[pt+'.fan.map.RlineMap'] = 2.0
@@ -453,10 +455,10 @@ if __name__ == "__main__":
         print(f'* MN: {MN}, alt: {alt}')
         print('***'*10)
         prob['OD_full_pwr.fc.MN'] = MN
-        prob['OD_full_pwr.fc.alt'] = alt
+        prob.set_val('OD_full_pwr.fc.alt', alt, units='ft')
 
         prob['OD_part_pwr.fc.MN'] = MN
-        prob['OD_part_pwr.fc.alt'] = alt
+        prob.set_val('OD_part_pwr.fc.alt', alt, units='ft')
 
         for PC in [1, 0.9, 0.8, .7]:
             print(f'## PC = {PC}')

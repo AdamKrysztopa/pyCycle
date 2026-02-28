@@ -2,6 +2,7 @@ import numpy as np
 import openmdao.api as om
 
 from pycycle.constants import AIR_JETA_TAB_SPEC, TAB_AIR_FUEL_COMPOSITION
+from pycycle.unit_utils import get_unit
 
 
 class ThermoAdd(om.ExplicitComponent):
@@ -26,6 +27,7 @@ class ThermoAdd(om.ExplicitComponent):
                              desc='name of the mixing reactant; must match one of the keys from the inflow composition dictionary', 
                              types=(dict, str, list, tuple), allow_none=True)
         self.options.declare('mix_names', default='mix', types=(str, list, tuple))
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def output_port_data(self):
 
@@ -58,27 +60,28 @@ class ThermoAdd(om.ExplicitComponent):
 
         self.output_port_data()
 
+        unit_system = self.options['unit_system']
         # inputs
-        self.add_input('Fl_I:stat:W', val=0.0, desc='weight flow', units='lbm/s')
-        self.add_input('Fl_I:tot:h', val=0.0, desc='total enthalpy', units='Btu/lbm')
+        self.add_input('Fl_I:stat:W', val=0.0, desc='weight flow', units=get_unit('mass_flow', unit_system))
+        self.add_input('Fl_I:tot:h', val=0.0, desc='total enthalpy', units=get_unit('enthalpy', unit_system))
         self.add_input('Fl_I:tot:composition', val=inflow_composition_vec, 
                        desc='incoming flow composition')
         
         for name in mix_names: 
-            self.add_input(f'{name}:h', val=0.0, units='Btu/lbm', desc="reactant enthalpy")
+            self.add_input(f'{name}:h', val=0.0, units=get_unit('enthalpy', unit_system), desc="reactant enthalpy")
 
             if mix_mode == 'reactant': 
                 self.add_input(f'{name}:ratio', val=0.0, desc='reactant to air mass ratio')
-                self.add_output(f'{name}:W', shape=1, units="lbm/s", desc="mix input massflow")
+                self.add_output(f'{name}:W', shape=1, units=get_unit('mass_flow', unit_system), desc="mix input massflow")
 
             else: 
                 self.add_input(f'{name}:composition', val=inflow_composition_vec, desc='mix flow composition' )
-                self.add_input(f'{name}:W', shape=1, units="lbm/s", desc="mix input massflow")
+                self.add_input(f'{name}:W', shape=1, units=get_unit('mass_flow', unit_system), desc="mix input massflow")
 
         # outputs
-        self.add_output('mass_avg_h', shape=1, units='Btu/lbm',
+        self.add_output('mass_avg_h', shape=1, units=get_unit('enthalpy', unit_system),
                         desc="mass flow rate averaged specific enthalpy")
-        self.add_output('Wout', shape=1, units="lbm/s", desc="total massflow out")
+        self.add_output('Wout', shape=1, units=get_unit('mass_flow', unit_system), desc="total massflow out")
         self.add_output('composition_out', val=inflow_composition_vec)
 
 

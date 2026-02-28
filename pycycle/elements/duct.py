@@ -7,6 +7,7 @@ from pycycle.thermo.thermo import Thermo
 from pycycle.flow_in import FlowIn
 from pycycle.passthrough import PassThrough
 from pycycle.element_base import Element
+from pycycle.unit_utils import get_unit
 
 class MachPressureLossMap(om.ExplicitComponent):
     """
@@ -61,14 +62,18 @@ class PressureLoss(om.ExplicitComponent):
     Calculates pressure loss across the duct.
     """
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
+        unit_system = self.options['unit_system']
         # inputs
         self.add_input('dPqP', val = 0.0,
                        desc='pressure differential as a fraction of incoming pressure')
-        self.add_input('Pt_in', val=5.0, units='lbf/inch**2', desc='Inlet total pressure')
+        self.add_input('Pt_in', val=5.0, units=get_unit('pressure', unit_system), desc='Inlet total pressure')
 
         # outputs
-        self.add_output('Pt_out', val=14.696, units='lbf/inch**2', desc='Exit total pressure', lower=1e-3)
+        self.add_output('Pt_out', val=14.696, units=get_unit('pressure', unit_system), desc='Exit total pressure', lower=1e-3)
 
         self.declare_partials('Pt_out', '*')
 
@@ -85,15 +90,19 @@ class qCalc(om.ExplicitComponent):
     Additional energy added or extracted by the duct.
     """
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
+        unit_system = self.options['unit_system']
         #inputs
-        self.add_input('W_in', val=2.0, units='lbm/s', desc='incoming mass flow')
-        self.add_input('Q_dot', val=0.0, units='Btu/s',
+        self.add_input('W_in', val=2.0, units=get_unit('mass_flow', unit_system), desc='incoming mass flow')
+        self.add_input('Q_dot', val=0.0, units=get_unit('enthalpy_flow', unit_system),
                        desc='heat flow rate into (positive) or out of (negative) the air')
-        self.add_input('ht_in', val=1.0, units='Btu/lbm', desc='incoming total enthalpy')
+        self.add_input('ht_in', val=1.0, units=get_unit('enthalpy', unit_system), desc='incoming total enthalpy')
 
         #outputs
-        self.add_output('ht_out', val=1.0, units='Btu/lbm', desc='outgoing total enthalpy' )
+        self.add_output('ht_out', val=1.0, units=get_unit('enthalpy', unit_system), desc='outgoing total enthalpy' )
 
         self.declare_partials('ht_out', '*')
 
@@ -188,11 +197,11 @@ class Duct(Element):
 
         #Pressure Loss Component
         prom_in = [('Pt_in', 'Fl_I:tot:P'), 'dPqP']
-        self.add_subsystem('p_loss', PressureLoss(), promotes_inputs=prom_in)
+        self.add_subsystem('p_loss', PressureLoss(unit_system=unit_system), promotes_inputs=prom_in)
 
         # Energy Calc Component
         prom_in = [('W_in', 'Fl_I:stat:W'), ('ht_in', 'Fl_I:tot:h'), 'Q_dot']
-        self.add_subsystem('q_calc', qCalc(), promotes_inputs=prom_in)
+        self.add_subsystem('q_calc', qCalc(unit_system=unit_system), promotes_inputs=prom_in)
 
         # Total Calc
         real_flow = Thermo(mode='total_hP', fl_name='Fl_O:tot', 
@@ -245,7 +254,7 @@ class Duct(Element):
                 self.connect('Fl_O:tot:P', 'out_stat.guess:Pt')
                 self.connect('Fl_O:tot:gamma', 'out_stat.guess:gamt')
         else:
-            self.add_subsystem('W_passthru', PassThrough('Fl_I:stat:W', 'Fl_O:stat:W', 1.0, units= "lbm/s"),
+            self.add_subsystem('W_passthru', PassThrough('Fl_I:stat:W', 'Fl_O:stat:W', 1.0, units=get_unit('mass_flow', unit_system)),
                                promotes=['*'])
 
         super().setup()

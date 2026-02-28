@@ -1,10 +1,12 @@
-import sys
-import numpy as np
 import argparse
+import sys
 
+import numpy as np
 import openmdao.api as om
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
+
 
 class MultiSpoolTurboshaft(pyc.Cycle):
 
@@ -17,6 +19,7 @@ class MultiSpoolTurboshaft(pyc.Cycle):
 
         design = self.options['design']
         maxiter = self.options['maxiter']
+        unit_system = self.options['unit_system']
         self.options['thermo_method'] = 'CEA'
         self.options['thermo_data'] = pyc.species_data.janaf
 
@@ -68,41 +71,41 @@ class MultiSpoolTurboshaft(pyc.Cycle):
         balance = self.add_subsystem('balance', om.BalanceComp())
         if design:
 
-            balance.add_balance('W', units='lbm/s', eq_units=None)
+            balance.add_balance('W', units=get_unit('mass_flow', unit_system), eq_units=None)
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('nozzle.PR', 'balance.lhs:W')
 
-            balance.add_balance('FAR', eq_units='degR', lower=1e-4, val=.017)
+            balance.add_balance('FAR', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017)
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR')
 
-            balance.add_balance('lpt_PR', val=1.5, lower=1.001, upper=8, eq_units='hp', rhs_val=0.)
+            balance.add_balance('lpt_PR', val=1.5, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.lpt_PR', 'lpt.PR')
             self.connect('ip_shaft.pwr_net', 'balance.lhs:lpt_PR')
 
-            balance.add_balance('hpt_PR', val=1.5, lower=1.001, upper=8, eq_units='hp', rhs_val=0.)
+            balance.add_balance('hpt_PR', val=1.5, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.hpt_PR', 'hpt.PR')
             self.connect('hp_shaft.pwr_net', 'balance.lhs:hpt_PR')
 
-            balance.add_balance('pt_PR', val=1.5, lower=1.001, upper=8, eq_units='hp', rhs_val=0.)
+            balance.add_balance('pt_PR', val=1.5, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.pt_PR', 'pt.PR')
             self.connect('lp_shaft.pwr_net', 'balance.lhs:pt_PR')
 
 
         else:
-            balance.add_balance('FAR', eq_units='hp', lower=1e-4, val=.017)
+            balance.add_balance('FAR', eq_units=get_unit('power', unit_system), lower=1e-4, val=.017)
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('lp_shaft.pwr_net', 'balance.lhs:FAR')
 
-            balance.add_balance('W', units='lbm/s', eq_units='inch**2')
+            balance.add_balance('W', units=get_unit('mass_flow', unit_system), eq_units=get_unit('area', unit_system))
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('nozzle.Throat:stat:area', 'balance.lhs:W')
 
-            balance.add_balance('IP_Nmech', val=12000.0, units='rpm', lower=1.001, eq_units='hp', rhs_val=0.)
+            balance.add_balance('IP_Nmech', val=12000.0, units='rpm', lower=1.001, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.IP_Nmech', 'IP_Nmech')
             self.connect('ip_shaft.pwr_net', 'balance.lhs:IP_Nmech')
 
-            balance.add_balance('HP_Nmech', val=14800.0, units='rpm', lower=1.001, eq_units='hp', rhs_val=0.)
+            balance.add_balance('HP_Nmech', val=14800.0, units='rpm', lower=1.001, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.HP_Nmech', 'HP_Nmech')
             self.connect('hp_shaft.pwr_net', 'balance.lhs:HP_Nmech')
 
@@ -343,25 +346,25 @@ if __name__ == "__main__":
 
     # Set initial guesses for balances
     prob['DESIGN.balance.FAR'] = 0.02261
-    prob['DESIGN.balance.W'] = 10.76
+    prob.set_val('DESIGN.balance.W', 10.76, units='lbm/s')
     prob['DESIGN.balance.hpt_PR'] = 4.233
     prob['DESIGN.balance.lpt_PR'] = 1.979
     prob['DESIGN.balance.pt_PR'] = 4.919
-    prob['DESIGN.fc.balance.Pt'] = 5.666
-    prob['DESIGN.fc.balance.Tt'] = 440.0
+    prob.set_val('DESIGN.fc.balance.Pt', 5.666, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 440.0, units='degR')
 
     for i, pt in enumerate(mp_multispool.od_pts):
 
         # initial guesses
         prob[pt+'.balance.FAR'] = 0.02135
-        prob[pt+'.balance.W'] = 10.775
+        prob.set_val(pt+'.balance.W', 10.775, units='lbm/s')
         prob[pt+'.balance.HP_Nmech'] = 14800.000
         prob[pt+'.balance.IP_Nmech'] = 12000.000
         prob[pt+'.hpt.PR'] = 4.233
         prob[pt+'.lpt.PR'] = 1.979
         prob[pt+'.pt.PR'] = 4.919
-        prob[pt+'.fc.balance.Pt'] = 5.666
-        prob[pt+'.fc.balance.Tt'] = 440.0
+        prob.set_val(pt+'.fc.balance.Pt', 5.666, units='psi')
+        prob.set_val(pt+'.fc.balance.Tt', 440.0, units='degR')
         prob[pt+'.nozzle.PR'] = 1.1
 
     st = time.time()

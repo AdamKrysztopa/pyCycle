@@ -4,14 +4,13 @@ from collections.abc import Iterable
 import numpy as np
 import openmdao.api as om
 
-from pycycle.constants import BTU_s2HP, HP_per_RPM_to_FT_LBF
 from pycycle.element_base import Element
 from pycycle.elements.compressor_map import CompressorMap
 from pycycle.flow_in import FlowIn
 from pycycle.maps.ncp01 import NCP01
 from pycycle.passthrough import PassThrough
 from pycycle.thermo.thermo import Thermo
-from pycycle.unit_utils import STD_DAY, get_unit
+from pycycle.unit_utils import ENTHALPY_FLOW_TO_POWER, POWER_PER_RPM_TO_TORQUE, STD_DAY, get_unit
 
 
 class CorrectedInputsCalc(om.ExplicitComponent):
@@ -61,12 +60,15 @@ class CorrectedInputsCalc(om.ExplicitComponent):
 
 class eff_poly_calc(om.ExplicitComponent):
     """ Calculate polytropic efficiency for compressor"""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
+        unit_system = self.options['unit_system']
         self.add_input('PR', 1.0,units=None, desc='element pressure ratio Pt_out/Pt_in')
-        self.add_input('S_in', 1.0,units='Btu/(lbm*degR)', desc='element input entropy')
-        self.add_input('S_out', 1.0,units='Btu/(lbm*degR)', desc='element output entropy')
-        self.add_input('Rt', val=0.0686, units='Btu/(lbm*degR)', desc='specific gas constant')
+        self.add_input('S_in', 1.0,units=get_unit('entropy', unit_system), desc='element input entropy')
+        self.add_input('S_out', 1.0,units=get_unit('entropy', unit_system), desc='element output entropy')
+        self.add_input('Rt', val=0.0686, units=get_unit('gas_constant', unit_system), desc='specific gas constant')
         # list_outputs
         self.add_output('eff_poly', val=1.0, units=None, desc='polytropic efficiency', lower=1e-6)
         # define partials
@@ -95,44 +97,51 @@ class eff_poly_calc(om.ExplicitComponent):
 
 class Power(om.ExplicitComponent):
     """Power calculates shaft power for the compressor or turbine"""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
+        unit_system = self.options['unit_system']
         # inputs
-        self.add_input('W', val=30.0, units='lbm/s', desc='mass flow')
-        self.add_input('ht_out', val=20.0, units='Btu/lbm',
+        self.add_input('W', val=30.0, units=get_unit('mass_flow', unit_system), desc='mass flow')
+        self.add_input('ht_out', val=20.0, units=get_unit('enthalpy', unit_system),
                        desc='downstream enthalpy')
-        self.add_input('ht_in', val=10.0, units='Btu/lbm',
+        self.add_input('ht_in', val=10.0, units=get_unit('enthalpy', unit_system),
                        desc='incoming enthalpy')
         self.add_input('Nmech', val=1000.0, units='rpm', desc='shaft speed')
         # self.add_input('Tt_in', val=500., units='degR', desc='incoming temperature')
         # outputs
-        self.add_output('power', shape=1, units='hp', desc='turbine power')
-        self.add_output('trq', shape=1, units='ft*lbf', desc='turbine torque')
+        self.add_output('power', shape=1, units=get_unit('power', unit_system), desc='turbine power')
+        self.add_output('trq', shape=1, units=get_unit('torque', unit_system), desc='turbine torque')
 
         self.declare_partials('power', ['W', 'ht_out', 'ht_in'])
         self.declare_partials('trq', '*')
 
     def compute(self, inputs, outputs):
+        enthalpy_flow_to_power = ENTHALPY_FLOW_TO_POWER[self.options['unit_system']]
+        power_per_rpm_to_torque = POWER_PER_RPM_TO_TORQUE[self.options['unit_system']]
 
-        outputs['power'] = inputs['W'] * (inputs['ht_in'] - inputs['ht_out']) * BTU_s2HP
-        outputs['trq'] = HP_per_RPM_to_FT_LBF * outputs['power'] / inputs['Nmech']
+        outputs['power'] = inputs['W'] * (inputs['ht_in'] - inputs['ht_out']) * enthalpy_flow_to_power
+        outputs['trq'] = power_per_rpm_to_torque * outputs['power'] / inputs['Nmech']
 
 
     def compute_partials(self, inputs, J):
+        enthalpy_flow_to_power = ENTHALPY_FLOW_TO_POWER[self.options['unit_system']]
+        power_per_rpm_to_torque = POWER_PER_RPM_TO_TORQUE[self.options['unit_system']]
         ht_in = inputs['ht_in']
         ht_out = inputs['ht_out']
         W = inputs['W']
         Nmech = inputs['Nmech']
 
-        J['power', 'W'] = (ht_in - ht_out) * BTU_s2HP
-        J['power', 'ht_out'] = -W * BTU_s2HP
-        J['power', 'ht_in'] = W * BTU_s2HP
+        J['power', 'W'] = (ht_in - ht_out) * enthalpy_flow_to_power
+        J['power', 'ht_out'] = -W * enthalpy_flow_to_power
+        J['power', 'ht_in'] = W * enthalpy_flow_to_power
         # J['power','Nmech'] = 0.
 
-        J['trq', 'W'] = (ht_in - ht_out) * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
-        J['trq', 'ht_out'] = -W * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
-        J['trq', 'ht_in'] = W * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
-        J['trq', 'Nmech'] = -W * (ht_in - ht_out) * BTU_s2HP * HP_per_RPM_to_FT_LBF * Nmech**-2.
+        J['trq', 'W'] = (ht_in - ht_out) * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
+        J['trq', 'ht_out'] = -W * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
+        J['trq', 'ht_in'] = W * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
+        J['trq', 'Nmech'] = -W * (ht_in - ht_out) * enthalpy_flow_to_power * power_per_rpm_to_torque * Nmech**-2.
 
 
 class BleedsAndPower(om.ExplicitComponent):
@@ -141,23 +150,25 @@ class BleedsAndPower(om.ExplicitComponent):
     def initialize(self):
         self.options.declare('bleed_names', types=Iterable,
                               desc='list of names for the bleed ports')
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
-        self.add_input('W_in', val=30.0, units='lbm/s',
+        unit_system = self.options['unit_system']
+        self.add_input('W_in', val=30.0, units=get_unit('mass_flow', unit_system),
                        desc='entrance mass flow')
-        self.add_input('ht_out', val=20.0, units='Btu/lbm',
+        self.add_input('ht_out', val=20.0, units=get_unit('enthalpy', unit_system),
                        desc='exit total enthalpy')
-        self.add_input('ht_in', val=10.0, units='Btu/lbm',
+        self.add_input('ht_in', val=10.0, units=get_unit('enthalpy', unit_system),
                        desc='entrance total enthalpy')
-        self.add_input('Pt_out', val=20.0, units='psi',
+        self.add_input('Pt_out', val=20.0, units=get_unit('pressure', unit_system),
                        desc='exit total pressure')
-        self.add_input('Pt_in', val=10.0, units='psi',
+        self.add_input('Pt_in', val=10.0, units=get_unit('pressure', unit_system),
                        desc='entrance total pressure')
         self.add_input('Nmech', val=1000.0, units='rpm', desc='shaft speed')
 
-        self.add_output('W_out', shape=1, units='lbm/s', desc='exit mass flow')
-        self.add_output('power', shape=1, units='hp', desc='shaft power')
-        self.add_output('trq', shape=1, units='ft*lbf', desc='shaft torque')
+        self.add_output('W_out', shape=1, units=get_unit('mass_flow', unit_system), desc='exit mass flow')
+        self.add_output('power', shape=1, units=get_unit('power', unit_system), desc='shaft power')
+        self.add_output('trq', shape=1, units=get_unit('torque', unit_system), desc='shaft torque')
 
         self.declare_partials('W_out', 'W_in')
         self.declare_partials('power', ['W_in', 'ht_in', 'ht_out'])
@@ -173,10 +184,10 @@ class BleedsAndPower(om.ExplicitComponent):
                            desc='bleed work fraction ((h_bld-h_in)/(h_out-h_in))')
 
             self.add_output(BN + ':stat:W', shape=1, lower=0.0,
-                            units='lbm/s', desc='bleed mass flow')
+                            units=get_unit('mass_flow', unit_system), desc='bleed mass flow')
             self.add_output(BN + ':Pt', shape=1, lower=1e-6,
-                            units='psi', desc='bleed total pressure')
-            self.add_output(BN + ':ht', shape=1, units='Btu/lbm',
+                            units=get_unit('pressure', unit_system), desc='bleed total pressure')
+            self.add_output(BN + ':ht', shape=1, units=get_unit('enthalpy', unit_system),
                             desc='bleed total enthalpy')
             # self.add_output(BN+':power', shape=1, desc='bleed power reduction')
 
@@ -188,6 +199,8 @@ class BleedsAndPower(om.ExplicitComponent):
             self.declare_partials('trq', [BN+':frac_W', BN+':frac_work'])
 
     def compute(self, inputs, outputs):
+        enthalpy_flow_to_power = ENTHALPY_FLOW_TO_POWER[self.options['unit_system']]
+        power_per_rpm_to_torque = POWER_PER_RPM_TO_TORQUE[self.options['unit_system']]
 
         Pt_in = inputs['Pt_in']
         Pt_out = inputs['Pt_out']
@@ -197,7 +210,7 @@ class BleedsAndPower(om.ExplicitComponent):
 
         # calculate flow and power without bleed flows
         outputs['W_out'] = W_in
-        outputs['power'] = W_in * (ht_in - ht_out) * BTU_s2HP
+        outputs['power'] = W_in * (ht_in - ht_out) * enthalpy_flow_to_power
 
         # calculate bleed specific outputs and modify exit flow and power
         for BN in self.options['bleed_names']:
@@ -209,14 +222,16 @@ class BleedsAndPower(om.ExplicitComponent):
             ht = ht_in + inputs[BN + ':frac_work'] * (ht_out - ht_in)
 
             outputs['W_out'] -= stat_W
-            outputs['power'] -= stat_W * (ht - ht_out) * BTU_s2HP
+            outputs['power'] -= stat_W * (ht - ht_out) * enthalpy_flow_to_power
             outputs[BN_stat_W] = stat_W
             outputs[BN_ht] = ht
 
         # calculate torque based on revised power and shaft speed
-        outputs['trq'] = HP_per_RPM_to_FT_LBF * outputs['power'] / inputs['Nmech']
+        outputs['trq'] = power_per_rpm_to_torque * outputs['power'] / inputs['Nmech']
 
     def compute_partials(self, inputs, J):
+        enthalpy_flow_to_power = ENTHALPY_FLOW_TO_POWER[self.options['unit_system']]
+        power_per_rpm_to_torque = POWER_PER_RPM_TO_TORQUE[self.options['unit_system']]
 
         ht_in = inputs['ht_in']
         ht_out = inputs['ht_out']
@@ -227,14 +242,14 @@ class BleedsAndPower(om.ExplicitComponent):
         # Jacobian elements without bleed flows
         dW_out_dW_in = 1.0
 
-        dpower_dW_in = (ht_in - ht_out) * BTU_s2HP
-        dpower_dht_in = W_in * BTU_s2HP
-        dpower_dht_out = -W_in * BTU_s2HP
+        dpower_dW_in = (ht_in - ht_out) * enthalpy_flow_to_power
+        dpower_dht_in = W_in * enthalpy_flow_to_power
+        dpower_dht_out = -W_in * enthalpy_flow_to_power
 
-        dtrq_dW_in = (ht_in - ht_out) * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
-        dtrq_dht_in = W_in * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
-        dtrq_dht_out = -W_in * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
-        dtrq_dNmech = -W_in * (ht_in - ht_out) * BTU_s2HP * HP_per_RPM_to_FT_LBF * Nmech**-2.
+        dtrq_dW_in = (ht_in - ht_out) * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
+        dtrq_dht_in = W_in * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
+        dtrq_dht_out = -W_in * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
+        dtrq_dNmech = -W_in * (ht_in - ht_out) * enthalpy_flow_to_power * power_per_rpm_to_torque * Nmech**-2.
 
         # Jacobian elements and modifications due to bleed flows
         for BN in self.options['bleed_names']:
@@ -252,11 +267,11 @@ class BleedsAndPower(om.ExplicitComponent):
             dW_out_dW_in -= frac_W
             J['W_out', BN_frac_W] = -W_in
 
-            dpower_dW_in -= frac_W * (1.0 - frac_work) * (ht_in - ht_out) * BTU_s2HP
-            dpower_dht_in -= W_in * frac_W * (1.0 - frac_work) * BTU_s2HP
-            dpower_dht_out -= -W_in * frac_W * (1.0 - frac_work) * BTU_s2HP
-            J['power', BN_frac_W] = -W_in * (1.0 - frac_work) * (ht_in - ht_out) * BTU_s2HP
-            J['power', BN_frac_work] = W_in * frac_W * (ht_in - ht_out) * BTU_s2HP
+            dpower_dW_in -= frac_W * (1.0 - frac_work) * (ht_in - ht_out) * enthalpy_flow_to_power
+            dpower_dht_in -= W_in * frac_W * (1.0 - frac_work) * enthalpy_flow_to_power
+            dpower_dht_out -= -W_in * frac_W * (1.0 - frac_work) * enthalpy_flow_to_power
+            J['power', BN_frac_W] = -W_in * (1.0 - frac_work) * (ht_in - ht_out) * enthalpy_flow_to_power
+            J['power', BN_frac_work] = W_in * frac_W * (ht_in - ht_out) * enthalpy_flow_to_power
 
             J[BN_stat_W, 'W_in'] = frac_W
             J[BN_stat_W, BN_frac_W] = W_in
@@ -270,17 +285,17 @@ class BleedsAndPower(om.ExplicitComponent):
             J[BN_ht, 'ht_out'] = frac_work
 
             dtrq_dW_in -= frac_W * (1.0 - frac_work) * (
-                ht_in - ht_out) * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
-            dtrq_dht_in -= W_in * frac_W * (1.0 - frac_work) * BTU_s2HP * \
-                HP_per_RPM_to_FT_LBF / Nmech
-            dtrq_dht_out -= -W_in * frac_W * (1.0 - frac_work) * BTU_s2HP * \
-                HP_per_RPM_to_FT_LBF / Nmech
+                ht_in - ht_out) * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
+            dtrq_dht_in -= W_in * frac_W * (1.0 - frac_work) * enthalpy_flow_to_power * \
+                power_per_rpm_to_torque / Nmech
+            dtrq_dht_out -= -W_in * frac_W * (1.0 - frac_work) * enthalpy_flow_to_power * \
+                power_per_rpm_to_torque / Nmech
             J['trq', BN_frac_W] = -W_in * (1.0 - frac_work) * (
-                ht_in - ht_out) * BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
+                ht_in - ht_out) * enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
             J['trq', BN_frac_work] = W_in * frac_W * (ht_in - ht_out) * \
-                BTU_s2HP * HP_per_RPM_to_FT_LBF / Nmech
+                enthalpy_flow_to_power * power_per_rpm_to_torque / Nmech
             dtrq_dNmech -= -W_in * frac_W * (1.0 - frac_work) * (
-                ht_in - ht_out) * BTU_s2HP * HP_per_RPM_to_FT_LBF * Nmech**-2
+                ht_in - ht_out) * enthalpy_flow_to_power * power_per_rpm_to_torque * Nmech**-2
 
         J['W_out', 'W_in'] = dW_out_dW_in
         J['power', 'W_in'] = dpower_dW_in
@@ -293,16 +308,19 @@ class BleedsAndPower(om.ExplicitComponent):
 
 class EnthalpyRise(om.ExplicitComponent):
     """Calculates enthalpy rise across a compressor"""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
-        self.add_input('ideal_ht', val=2.0, units='Btu/lbm',
+        self.add_input('ideal_ht', val=2.0, units=get_unit('enthalpy', unit_system),
                        desc='ideal exit total enthalpy')
-        self.add_input('inlet_ht', val=1.0, units='Btu/lbm',
+        self.add_input('inlet_ht', val=1.0, units=get_unit('enthalpy', unit_system),
                        desc='entrance total enthalpy')
         self.add_input('eff', val=0.5, desc='design efficiency')
 
-        self.add_output('ht_out', shape=1, units='Btu/lbm',
+        self.add_output('ht_out', shape=1, units=get_unit('enthalpy', unit_system),
                         desc='exit total enthalpy')
 
         self.declare_partials('ht_out', '*')
@@ -322,14 +340,17 @@ class EnthalpyRise(om.ExplicitComponent):
 
 class PressureRise(om.ExplicitComponent):
     """A Component that calculates ..."""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
+        unit_system = self.options['unit_system']
         self.add_input('PR', 3.0, desc="design pressure ratio")
-        self.add_input('Pt_in', 5.0, units='lbf/inch**2',
+        self.add_input('Pt_in', 5.0, units=get_unit('pressure', unit_system),
                        desc="incomming total pressure")
 
         self.add_output('Pt_out', shape=1, lower=1e-5,
-                        units='lbf/inch**2', desc="exit total pressure")
+                        units=get_unit('pressure', unit_system), desc="exit total pressure")
 
         self.declare_partials('Pt_out', '*')
 
@@ -456,13 +477,13 @@ class Compressor(Element):
 
         map_data = self.options['map_data']
         map_calcs = CompressorMap(map_data=map_data, design=design,
-                             interp_method=interp_method, extrap=map_extrap)
+                             interp_method=interp_method, extrap=map_extrap, unit_system=unit_system)
         self.add_subsystem('map', map_calcs,
                             promotes=['s_Nc','s_eff','s_Wc','s_PR','Nc','Wc',
                                     'PR','eff','SMN','SMW'])
 
         # Calculate pressure rise across compressor
-        self.add_subsystem('press_rise', PressureRise(), promotes_inputs=[
+        self.add_subsystem('press_rise', PressureRise(unit_system=unit_system), promotes_inputs=[
                            'PR', ('Pt_in', 'Fl_I:tot:P')])
 
         # Calculate ideal flow station properties
@@ -477,7 +498,7 @@ class Compressor(Element):
         self.connect("press_rise.Pt_out", "ideal_flow.P")
 
         # Calculate enthalpy rise across compressor
-        self.add_subsystem("enth_rise", EnthalpyRise(),
+        self.add_subsystem("enth_rise", EnthalpyRise(unit_system=unit_system),
                            promotes_inputs=['eff', ('inlet_ht', 'Fl_I:tot:h')])
         self.connect("ideal_flow.h", "enth_rise.ideal_ht")
 
@@ -494,7 +515,7 @@ class Compressor(Element):
         self.connect("enth_rise.ht_out", "real_flow.h")
         self.connect("press_rise.Pt_out", "real_flow.P")
         #clculate Polytropic Efficiency
-        self.add_subsystem('eff_poly_calc', eff_poly_calc(),
+        self.add_subsystem('eff_poly_calc', eff_poly_calc(unit_system=unit_system),
                             promotes_inputs=[('PR','PR'),
                                              ('S_in','Fl_I:tot:S'),
                                              ('S_out','Fl_O:tot:S'),
@@ -504,7 +525,7 @@ class Compressor(Element):
                             promotes_outputs=['eff_poly'] )
 
         # Calculate shaft power consumption
-        blds_pwr = BleedsAndPower(bleed_names=bleeds)
+        blds_pwr = BleedsAndPower(bleed_names=bleeds, unit_system=unit_system)
         bld_inputs = ['frac_W', 'frac_P', 'frac_work']
         bld_in_vars = ['{0}:{1}'.format(
             bn, in_name) for bn, in_name in itertools.product(bleeds, bld_inputs)]
@@ -579,7 +600,7 @@ class Compressor(Element):
             self.add_subsystem('W_passthru', PassThrough('W_out',
                                                          'Fl_O:stat:W',
                                                          1.0,
-                                                         units="lbm/s"),
+                                                         units=get_unit('mass_flow', unit_system)),
                                promotes=['*'])
             self.set_order(['flow_in', 'corrinputs', 'map',
                             'press_rise','ideal_flow', 'enth_rise',

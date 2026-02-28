@@ -1,4 +1,5 @@
 import openmdao.api as om
+from pycycle.unit_utils import get_unit
 
 
 class Gearbox(om.ImplicitComponent):
@@ -7,21 +8,23 @@ class Gearbox(om.ImplicitComponent):
     def initialize(self):
         self.options.declare('design', default=True,
                               desc='Switch between on-design and off-design calculation.')
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
 
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         self.add_input('N_in', val=1000.0, units='rpm', desc='Shaft speed entering gearbox')
         self.add_input('N_out', val=1000.0, units='rpm', desc='Shaft speed exiting gearbox')
         self.add_input('eff', val=1.0, units=None, desc='Gearbox transmission efficiency')
 
-        self.add_output('trq_in', val=1.0, units='ft*lbf', desc='Torque entering gearbox')
-        self.add_output('trq_out', val=1.0, units='ft*lbf', desc='Torque exiting gearbox')
+        self.add_output('trq_in', val=1.0, units=get_unit('torque', unit_system), desc='Torque entering gearbox')
+        self.add_output('trq_out', val=1.0, units=get_unit('torque', unit_system), desc='Torque exiting gearbox')
 
         if design:
 
-            self.add_input('trq_base', val=1.0, units='ft*lbf', desc='Base torque value')
+            self.add_input('trq_base', val=1.0, units=get_unit('torque', unit_system), desc='Base torque value')
             self.add_output('gear_ratio', val=1.0, units=None, desc='Gear ratio (N_out/N_in)')
 
             self.declare_partials('gear_ratio', ['N_in','N_out'])
@@ -30,7 +33,7 @@ class Gearbox(om.ImplicitComponent):
 
         else:
             self.add_input('gear_ratio', val=1.0, units=None, desc='Gear ratio (N_out/N_in)')
-            self.add_output('trq_base', val=1.0, units='ft*lbf', desc='Base torque value')
+            self.add_output('trq_base', val=1.0, units=get_unit('torque', unit_system), desc='Base torque value')
 
             self.declare_partials('trq_base', ['N_in','gear_ratio'])
             self.declare_partials('trq_base', 'N_out', val=1.0)
@@ -98,7 +101,7 @@ if __name__ == "__main__":
     inputs.add_output('eff', 1.0)
     inputs.add_output('N_in', 6772.0, units='rpm')
     inputs.add_output('N_out', 2184.5, units='rpm')
-    inputs.add_output('trq_base', 23711.1, units='ft*lbf')
+    inputs.add_output('trq_base', 23711.1, units=get_unit('torque', 'ENG'))
     # inputs.add_output('gear_ratio', 0.322578263438, units=None)
 
 

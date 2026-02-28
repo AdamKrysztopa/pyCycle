@@ -17,9 +17,13 @@ class PR_bal(om.ImplicitComponent):
     pressure ratio (Pt/Ps) drops below 1.
     """
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
-        self.add_input('Ps_exhaust', val=5.0, units='lbf/inch**2', desc='Exhaust static pressure')
-        self.add_input('Ps_calc', val=5.0, units='lbf/inch**2', desc='Calculated exhaust static pressure')
+        unit_system = self.options['unit_system']
+        self.add_input('Ps_exhaust', val=5.0, units=get_unit('pressure', unit_system), desc='Exhaust static pressure')
+        self.add_input('Ps_calc', val=5.0, units=get_unit('pressure', unit_system), desc='Calculated exhaust static pressure')
 
         self.add_output('PR', val=2.0, lower=1.000001, units=None, desc='Total-to-staic pressure ratio')
 
@@ -38,15 +42,19 @@ class PressureCalcs(om.ExplicitComponent):
     Performs pressure calculations to get throat conditions.
     """
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
+        unit_system = self.options['unit_system']
         # inputs
-        self.add_input('Pt_in', val=10.0, units='lbf/inch**2', desc='Entrance total pressure')
+        self.add_input('Pt_in', val=10.0, units=get_unit('pressure', unit_system), desc='Entrance total pressure')
         self.add_input('PR', val=2.0, desc='Total-to-staic pressure ratio')
         self.add_input('dPqP', val=0.0, desc='Total pressure loss from inlet to throat')
 
         # outputs
-        self.add_output('Pt_th', shape=1, units='lbf/inch**2', desc='Throat total pressure', lower=1e-3)
-        self.add_output('Ps_calc', val=5.0, units='lbf/inch**2', desc='Calculated exhaust static pressure')
+        self.add_output('Pt_th', shape=1, units=get_unit('pressure', unit_system), desc='Throat total pressure', lower=1e-3)
+        self.add_output('Ps_calc', val=5.0, units=get_unit('pressure', unit_system), desc='Calculated exhaust static pressure')
 
         self.declare_partials('Pt_th', ['Pt_in', 'dPqP'])
         self.declare_partials('Ps_calc', ['Pt_in', 'PR', 'dPqP'])
@@ -155,50 +163,52 @@ class Mux(om.ExplicitComponent):
                               desc='Outflow station prefix.')
         self.options.declare('choke_blend_kappa', default=50.0,
                               desc='Sharpness of choke transition blending. Higher = sharper.')
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
         nozzType = self.options['nozzType']
         fl_out_name = self.options['fl_out_name']
+        unit_system = self.options['unit_system']
 
         if nozzType not in ["CV", "CD", "CD_CV"]:
             msg = "nozzType must be 'CV', 'CD' or 'CD_CV', but '{}' was given.".format(nozzType)
             raise ValueError(msg)
 
         # input
-        self.add_input('Ps_calc', val=5.0, units='lbf/inch**2', desc='Exhaust static pressure')
-        self.add_input('S', val=0.0, desc='entropy', units='Btu/(lbm*degR)')
+        self.add_input('Ps_calc', val=5.0, units=get_unit('pressure', unit_system), desc='Exhaust static pressure')
+        self.add_input('S', val=0.0, desc='entropy', units=get_unit('entropy', unit_system))
 
         for prefix in ('Ps', 'MN'):
-            self.add_input('%s:h' % prefix, val=0.0, desc='static enthalpy', units='Btu/lbm')
-            self.add_input('%s:T' % prefix, val=0.0, desc='static temperature', units='degR')
-            self.add_input('%s:P' % prefix, val=0.0, desc='static pressure', units='lbf/inch**2')
-            self.add_input('%s:rho' % prefix, val=0.0, desc='static density', units='lbm/ft**3')
+            self.add_input('%s:h' % prefix, val=0.0, desc='static enthalpy', units=get_unit('enthalpy', unit_system))
+            self.add_input('%s:T' % prefix, val=0.0, desc='static temperature', units=get_unit('temperature', unit_system))
+            self.add_input('%s:P' % prefix, val=0.0, desc='static pressure', units=get_unit('pressure', unit_system))
+            self.add_input('%s:rho' % prefix, val=0.0, desc='static density', units=get_unit('density', unit_system))
             self.add_input('%s:gamma' % prefix, val=0.0, desc='static gamma')
-            self.add_input('%s:V' % prefix, val=0.0, desc='Velocity', units='ft/s')
-            self.add_input('%s:Vsonic' % prefix, val=0.0, desc='Speed of sound', units='ft/s')
+            self.add_input('%s:V' % prefix, val=0.0, desc='Velocity', units=get_unit('velocity', unit_system))
+            self.add_input('%s:Vsonic' % prefix, val=0.0, desc='Speed of sound', units=get_unit('velocity', unit_system))
             self.add_input('%s:MN' % prefix, val=0.0, desc='Mach number')
-            self.add_input('%s:area' % prefix, val=0.0, desc='Flow area', units='inch**2')
-            self.add_input('%s:Cp' % prefix, val=0.0, desc='specific heat at constant pressure', units='Btu/(lbm*degR)')
-            self.add_input('%s:Cv' % prefix, val=0.0, desc='specific heat at constant volume', units='Btu/(lbm*degR)')
-            self.add_input('%s:W' % prefix, val=0.0, desc='Mass flow rate', units='lbm/s')
+            self.add_input('%s:area' % prefix, val=0.0, desc='Flow area', units=get_unit('area', unit_system))
+            self.add_input('%s:Cp' % prefix, val=0.0, desc='specific heat at constant pressure', units=get_unit('specific_heat', unit_system))
+            self.add_input('%s:Cv' % prefix, val=0.0, desc='specific heat at constant volume', units=get_unit('specific_heat', unit_system))
+            self.add_input('%s:W' % prefix, val=0.0, desc='Mass flow rate', units=get_unit('mass_flow', unit_system))
 
         # output
         self.add_output('choked', shape=1, desc='Flag for choked flow')
 
         for prefix in ('Throat', fl_out_name):
-            self.add_output('%s:stat:h' % prefix, shape=1, desc='static enthalpy', units='Btu/lbm')
-            self.add_output('%s:stat:T' % prefix, shape=1, desc='static temperature', units='degR')
-            self.add_output('%s:stat:P' % prefix, shape=1, desc='static pressure', units='lbf/inch**2')
-            self.add_output('%s:stat:rho' % prefix, shape=1, desc='static density', units='lbm/ft**3')
+            self.add_output('%s:stat:h' % prefix, shape=1, desc='static enthalpy', units=get_unit('enthalpy', unit_system))
+            self.add_output('%s:stat:T' % prefix, shape=1, desc='static temperature', units=get_unit('temperature', unit_system))
+            self.add_output('%s:stat:P' % prefix, shape=1, desc='static pressure', units=get_unit('pressure', unit_system))
+            self.add_output('%s:stat:rho' % prefix, shape=1, desc='static density', units=get_unit('density', unit_system))
             self.add_output('%s:stat:gamma' % prefix, shape=1, desc='static gamma')
-            self.add_output('%s:stat:S' % prefix, shape=1, desc='entropy', units='Btu/(lbm*degR)')
-            self.add_output('%s:stat:Cp' % prefix, shape=1, desc='specific heat at constant pressure', units='Btu/(lbm*degR)')
-            self.add_output('%s:stat:Cv' % prefix, shape=1, desc='specific heat at constant volume', units='Btu/(lbm*degR)')
-            self.add_output('%s:stat:V' % prefix, shape=1, desc='Velocity', units='ft/s')
-            self.add_output('%s:stat:Vsonic' % prefix, shape=1, desc='Speed of sound', units='ft/s')
+            self.add_output('%s:stat:S' % prefix, shape=1, desc='entropy', units=get_unit('entropy', unit_system))
+            self.add_output('%s:stat:Cp' % prefix, shape=1, desc='specific heat at constant pressure', units=get_unit('specific_heat', unit_system))
+            self.add_output('%s:stat:Cv' % prefix, shape=1, desc='specific heat at constant volume', units=get_unit('specific_heat', unit_system))
+            self.add_output('%s:stat:V' % prefix, shape=1, desc='Velocity', units=get_unit('velocity', unit_system))
+            self.add_output('%s:stat:Vsonic' % prefix, shape=1, desc='Speed of sound', units=get_unit('velocity', unit_system))
             self.add_output('%s:stat:MN' % prefix, shape=1, desc='Mach number')
-            self.add_output('%s:stat:area' % prefix, shape=1, desc='Flow area', units='inch**2')
-            self.add_output('%s:stat:W' % prefix, shape=1, desc='Mass Flow Rate', units='lbm/s')
+            self.add_output('%s:stat:area' % prefix, shape=1, desc='Flow area', units=get_unit('area', unit_system))
+            self.add_output('%s:stat:W' % prefix, shape=1, desc='Mass Flow Rate', units=get_unit('mass_flow', unit_system))
 
         self.flow_out = ['h', 'T', 'P', 'rho', 'gamma', 'Cp', 'Cv', 'V', 'Vsonic', 'MN', 'area', 'W']
 
@@ -293,12 +303,12 @@ class Nozzle(Element):
         # self.connect('Ps_exhaust', 'PR_bal.lhs:PR')
         # self.connect('Ps_calc', 'PR_bal.rhs:PR')
 
-        self.add_subsystem('PR_bal', PR_bal(), promotes_inputs=['*'], promotes_outputs=['*'] )
+        self.add_subsystem('PR_bal', PR_bal(unit_system=unit_system), promotes_inputs=['*'], promotes_outputs=['*'] )
 
         # Calculate pressure at the throat
         prom_in = [('Pt_in', 'Fl_I:tot:P'),
                    'PR', 'dPqP']
-        self.add_subsystem('press_calcs', PressureCalcs(), promotes_inputs=prom_in,
+        self.add_subsystem('press_calcs', PressureCalcs(unit_system=unit_system), promotes_inputs=prom_in,
                            promotes_outputs=['Ps_calc'])
 
         # Calculate throat total flow properties
@@ -364,7 +374,8 @@ class Nozzle(Element):
 
         # Determine throat and exit flow properties based on nozzle type and exit static pressure
         mux = Mux(nozzType=nozzType, fl_out_name='Fl_O',
-                  choke_blend_kappa=self.options['choke_blend_kappa'])
+                  choke_blend_kappa=self.options['choke_blend_kappa'],
+                  unit_system=unit_system)
         prom_in = [('Ps:W', 'Fl_I:stat:W'),
                    ('MN:W', 'Fl_I:stat:W'),
                    ('Ps:P', 'Ps_calc'),

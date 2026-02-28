@@ -6,6 +6,7 @@ from pycycle.elements.ambient import Ambient
 from pycycle.elements.flow_start import FlowStart
 from pycycle.thermo.thermo import ThermoAdd
 from pycycle.element_base import Element
+from pycycle.unit_utils import get_unit
 
 
 class FlightConditions(Element):
@@ -53,7 +54,7 @@ class FlightConditions(Element):
         # composition = self.Fl_O_data['Fl_O']
         composition = self.options['composition']
 
-        self.add_subsystem('ambient', Ambient(), promotes=('alt', 'dTs'))  # inputs
+        self.add_subsystem('ambient', Ambient(unit_system=unit_system), promotes=('alt', 'dTs'))  # inputs
 
         conv = self.add_subsystem('conv', om.Group(), promotes=['*'])
         if reactant is not False:
@@ -72,8 +73,8 @@ class FlightConditions(Element):
         fs_start.pyc_setup_output_ports() 
 
         balance = conv.add_subsystem('balance', om.BalanceComp())
-        balance.add_balance('Tt', val=500.0, lower=1e-4, units='degR', desc='Total temperature', eq_units='degR')
-        balance.add_balance('Pt', val=14.696, lower=1e-4, units='psi', desc='Total pressure', eq_units='psi')
+        balance.add_balance('Tt', val=500.0, lower=1e-4, units=get_unit('temperature', unit_system), desc='Total temperature', eq_units=get_unit('temperature', unit_system))
+        balance.add_balance('Pt', val=14.696, lower=1e-4, units=get_unit('pressure', unit_system), desc='Total pressure', eq_units=get_unit('pressure', unit_system))
         # sub.set_order(['fs','balance'])
 
         newton = conv.nonlinear_solver = om.NewtonSolver()
@@ -111,10 +112,10 @@ if __name__ == "__main__":
     p1.model = om.Group()
 
     des_vars = p1.model.add_subsystem('des_vars', om.IndepVarComp())
-    des_vars.add_output('W', 0.0, units='lbm/s')
+    des_vars.add_output('W', 0.0, units=get_unit('mass_flow', 'ENG'))
     des_vars.add_output('alt', 1., units='ft')
     des_vars.add_output('MN', 0.5)
-    des_vars.add_output('dTs', 0.0, units='degR')
+    des_vars.add_output('dTs', 0.0, units=get_unit('temperature', 'ENG'))
 
 
     fc = p1.model.add_subsystem("fc", FlightConditions(thermo_data=thermo_data.wet_air))

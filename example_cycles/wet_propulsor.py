@@ -2,6 +2,7 @@ import openmdao.api as om
 import argparse
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
 
 
 class WetPropulsor(pyc.Cycle):
@@ -9,6 +10,7 @@ class WetPropulsor(pyc.Cycle):
     def setup(self):
 
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         # NOTE: DEFAULT TABULAR thermo doesn't include WAR, so must use CEA here
         # (or build your own thermo tables)
@@ -30,7 +32,14 @@ class WetPropulsor(pyc.Cycle):
             self.add_subsystem('shaft', om.IndepVarComp('Nmech', 1., units='rpm'))
             self.connect('shaft.Nmech', 'fan.Nmech')
 
-            balance.add_balance('W', units='lbm/s', eq_units='hp', val=50., lower=1., upper=500.)
+            balance.add_balance(
+                'W',
+                units=get_unit('mass_flow', unit_system),
+                eq_units=get_unit('power', unit_system),
+                val=50.,
+                lower=1.,
+                upper=500.,
+            )
             self.add_subsystem('balance', balance,
                                promotes_inputs=[('rhs:W', 'pwr_target')])
             self.connect('fan.power', 'balance.lhs:W')
@@ -39,10 +48,24 @@ class WetPropulsor(pyc.Cycle):
 
         else:
             # vary mass flow till the nozzle area matches the design values
-            balance.add_balance('W', units='lbm/s', eq_units='inch**2', val=50, lower=1., upper=500.)
+            balance.add_balance(
+                'W',
+                units=get_unit('mass_flow', unit_system),
+                eq_units=get_unit('area', unit_system),
+                val=50,
+                lower=1.,
+                upper=500.,
+            )
             self.connect('nozz.Throat:stat:area', 'balance.lhs:W')
 
-            balance.add_balance('Nmech', val=1., units='rpm', lower=0.1, upper=2.0, eq_units='hp')
+            balance.add_balance(
+                'Nmech',
+                val=1.,
+                units='rpm',
+                lower=0.1,
+                upper=2.0,
+                eq_units=get_unit('power', unit_system),
+            )
             self.connect('balance.Nmech', 'fan.Nmech')
             self.connect('fan.power', 'balance.lhs:Nmech')
 
@@ -154,14 +177,14 @@ if __name__ == "__main__":
 
     # Set initial guesses for balances
     prob['design.fc.MN'] = .8
-    prob['design.balance.W'] = 200.
+    prob.set_val('design.balance.W', 200., units='lbm/s')
 
 
     for i, pt in enumerate(mp_wet_propulsor.od_pts):
 
         # initial guesses    
         prob['off_design.fc.MN'] = .8
-        prob['off_design.balance.W'] = 406.790
+        prob.set_val('off_design.balance.W', 406.790, units='lbm/s')
         prob['off_design.balance.Nmech'] = 1.
         prob['off_design.fan.PR'] = 1.2
         prob['off_design.fan.map.RlineMap'] = 2.2

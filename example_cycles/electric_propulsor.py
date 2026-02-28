@@ -2,6 +2,7 @@ import openmdao.api as om
 import argparse
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
 
 # protection incase env doesn't have matplotlib installed, since its not strictly required
 try:
@@ -15,6 +16,7 @@ class Propulsor(pyc.Cycle):
     def setup(self):
 
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         USE_TABULAR = True
         if USE_TABULAR:
@@ -39,7 +41,14 @@ class Propulsor(pyc.Cycle):
             self.add_subsystem('shaft', om.IndepVarComp('Nmech', 1., units='rpm'))
             self.connect('shaft.Nmech', 'fan.Nmech')
 
-            balance.add_balance('W', units='lbm/s', eq_units='hp', val=50., lower=1., upper=500.)
+            balance.add_balance(
+                'W',
+                units=get_unit('mass_flow', unit_system),
+                eq_units=get_unit('power', unit_system),
+                val=50.,
+                lower=1.,
+                upper=500.,
+            )
             self.add_subsystem('balance', balance,
                                promotes_inputs=[('rhs:W', 'pwr_target')])
             self.connect('fan.power', 'balance.lhs:W')
@@ -48,10 +57,24 @@ class Propulsor(pyc.Cycle):
 
         else:
             # vary mass flow till the nozzle area matches the design values
-            balance.add_balance('W', units='lbm/s', eq_units='inch**2', val=50, lower=1., upper=500.)
+            balance.add_balance(
+                'W',
+                units=get_unit('mass_flow', unit_system),
+                eq_units=get_unit('area', unit_system),
+                val=50,
+                lower=1.,
+                upper=500.,
+            )
             self.connect('nozz.Throat:stat:area', 'balance.lhs:W')
 
-            balance.add_balance('Nmech', val=1., units='rpm', lower=0.1, upper=2.0, eq_units='hp')
+            balance.add_balance(
+                'Nmech',
+                val=1.,
+                units='rpm',
+                lower=0.1,
+                upper=2.0,
+                eq_units=get_unit('power', unit_system),
+            )
             self.connect('balance.Nmech', 'fan.Nmech')
             self.connect('fan.power', 'balance.lhs:Nmech')
 
@@ -123,7 +146,7 @@ class MPpropulsor(pyc.MPCycle):
         unit_system = self.options['unit_system']
 
         self.pyc_add_pnt('design', Propulsor(design=True, thermo_method='CEA', unit_system=unit_system))
-        self.pyc_add_cycle_param('pwr_target', 100.)
+        self.pyc_add_cycle_param('pwr_target', 100., units=get_unit('power', unit_system))
 
         # define the off-design conditions we want to run
         self.od_pts = ['off_design']
@@ -135,7 +158,7 @@ class MPpropulsor(pyc.MPCycle):
             self.pyc_add_pnt(pt, Propulsor(design=False, thermo_method='CEA', unit_system=unit_system))
 
             self.set_input_defaults(pt+'.fc.MN', val=self.od_MNs[i])
-            self.set_input_defaults(pt+'.fc.alt', val=self.od_alts, units='m')
+            self.set_input_defaults(pt+'.fc.alt', val=self.od_alts[i], units='m')
             self.set_input_defaults(pt+'.fan.map.RlineMap', val=self.od_Rlines[i])
 
         self.pyc_use_default_des_od_conns()
@@ -168,13 +191,13 @@ if __name__ == "__main__":
     prob.set_val('design.fan.eff', 0.96)
 
     # Set initial guesses for balances
-    prob['design.balance.W'] = 200.
+    prob.set_val('design.balance.W', 200., units='lbm/s')
 
     for i, pt in enumerate(mp_propulsor.od_pts):
 
         # initial guesses
         prob[pt+'.fan.PR'] = 1.2
-        prob[pt+'.balance.W'] = 406.790
+        prob.set_val(pt+'.balance.W', 406.790, units='lbm/s')
         prob[pt+'.balance.Nmech'] = 1. # normalized value
 
     st = time.time()

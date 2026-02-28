@@ -23,12 +23,15 @@ Still major NPSS-parity gaps:
 - No variable-geometry nozzle mode with commanded exit area input.
 - Turbine cooling remains a separate workflow, not integrated into `Turbine`.
 - No standard bleed reinjection element.
-- No cycle-wide `unit_system` support, with explicit `g_c` usage still active.
 
 Status update (current branch work):
 - `unit_system` plumbing (`ENG`/`SI`) has been added to `Cycle`/`Element` and propagated to element thermo/flow components.
 - Flow output wrappers are now unit-system aware (`FlowUnitProps` / `FlowUnitStaticProps`) with compatibility aliases retained.
 - Explicit `g_c` usage has been removed from inlet/nozzle performance equations.
+- Runtime unit declarations were unified across nozzle/turbine/shaft/performance/map/ambient/flight/cooling/gearbox/CFD start and thermo-add interfaces.
+- Additional runtime cleanup completed in `pycycle/elements/compressor.py` and `pycycle/elements/duct.py` (internal helper components).
+- Example-cycle unit/guess handling was updated for robust ENG/SI execution across all primary examples (`electric_propulsor`, `wet_propulsor`, `simple_turbojet`, `wet_simple_turbojet`, `single_spool_turboshaft`, `multi_spool_turboshaft`, `mixedflow_turbofan`, `afterburning_turbojet`) plus bounded verification of `high_bypass_turbofan`.
+- Validation status: full ENG/SI example sweep passes for the examples above; high-bypass runs stably through multiple schedule points in both ENG and SI (long sweep intentionally interrupted after stability confirmation); full element+thermo suite remains at the known baseline 4 failures in `test_nozzle_CV_CD.py`.
 
 ## Phase 0 (Immediate): NPSS Validation Harness
 
@@ -50,9 +53,13 @@ These are the most important backlog items.
 | **PHY-03** | Add variable-geometry nozzle mode (`A_exit` commanded input) | CRITICAL | `pycycle/elements/nozzle.py` |
 | **PHY-04** | Integrate cooling rows directly into `Turbine` | CRITICAL | `pycycle/elements/turbine.py`, `pycycle/elements/cooling.py` |
 | **PHY-05** | Add `BleedReinject` element | HIGH | `pycycle/elements/bleed_reinject.py` |
-| **UNI-01** | Add cycle/element `unit_system` option (`ENG`/`SI`) | HIGH | `pycycle/mp_cycle.py`, `pycycle/element_base.py` |
-| **UNI-03** | Replace `EngUnitProps` with unit-system-aware flow output component | HIGH | `pycycle/thermo/unit_comps.py` |
-| **UNI-04** | Deprecate/remove explicit `g_c` conversions where unit algebra should handle it | HIGH | `pycycle/constants.py`, `pycycle/elements/nozzle.py`, `pycycle/elements/inlet.py` |
+| **UNI-01** | Add cycle/element `unit_system` option (`ENG`/`SI`) | DONE | `pycycle/mp_cycle.py`, `pycycle/element_base.py` |
+| **UNI-03** | Replace `EngUnitProps` with unit-system-aware flow output component | DONE | `pycycle/thermo/unit_comps.py` |
+| **UNI-04** | Deprecate/remove explicit `g_c` conversions where unit algebra should handle it | DONE | `pycycle/constants.py`, `pycycle/elements/nozzle.py`, `pycycle/elements/inlet.py` |
+| **UNI-06** | Runtime component declaration unification (`get_unit` across runtime-critical modules) | DONE | `pycycle/elements/{nozzle,turbine,shaft,performance,compressor_map,turbine_map,flight_conditions,ambient,cooling,gearbox,cfd_start}.py`, `pycycle/thermo/{cea,tabular}/thermo_add.py` |
+| **UNI-07** | Power/torque and map interface unit-convention unification | DONE | `pycycle/unit_utils.py`, `pycycle/elements/{shaft,turbine,compressor,compressor_map,turbine_map}.py` |
+| **UNI-08** | Dual-system targeted regression coverage for migrated components | DONE | `pycycle/elements/test/`, `pycycle/thermo/test/` |
+| **UNI-09** | Required example matrix certification in ENG/SI | DONE | `example_cycles/{electric_propulsor,wet_propulsor,simple_turbojet,wet_simple_turbojet,single_spool_turboshaft,multi_spool_turboshaft,mixedflow_turbofan,afterburning_turbojet,high_bypass_turbofan}.py` |
 
 ## Phase 2 (High): Maps + Solver Behavior for Robust Physical Runs
 

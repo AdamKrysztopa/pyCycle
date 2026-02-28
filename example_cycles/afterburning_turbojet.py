@@ -5,11 +5,13 @@ import numpy as np
 import openmdao.api as om
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
 
 
 class ABTurbojet(pyc.Cycle):
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         USE_TABULAR = True
 
@@ -55,15 +57,15 @@ class ABTurbojet(pyc.Cycle):
         balance = self.add_subsystem('balance', om.BalanceComp())
         if design:
 
-            balance.add_balance('W', units='lbm/s', eq_units='lbf')
+            balance.add_balance('W', units=get_unit('mass_flow', unit_system), eq_units=get_unit('force', unit_system))
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('perf.Fn', 'balance.lhs:W')
 
-            balance.add_balance('FAR', eq_units='degR', lower=1e-4, val=.017)
+            balance.add_balance('FAR', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017)
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR')
 
-            balance.add_balance('turb_PR', val=1.5, lower=1.001, upper=8, eq_units='hp', rhs_val=0.)
+            balance.add_balance('turb_PR', val=1.5, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.turb_PR', 'turb.PR')
             self.connect('shaft.pwr_net', 'balance.lhs:turb_PR')
 
@@ -72,17 +74,17 @@ class ABTurbojet(pyc.Cycle):
 
         else:
 
-            balance.add_balance('FAR', eq_units='degR', lower=1e-4, val=.017)
+            balance.add_balance('FAR', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017)
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR')
 
-            balance.add_balance('Nmech', val=8000., units='rpm', lower=500., upper=10000., eq_units='hp', 
+            balance.add_balance('Nmech', val=8000., units='rpm', lower=500., upper=10000., eq_units=get_unit('power', unit_system), 
                                 use_mult=True, mult_val=-1)
             self.connect('balance.Nmech', 'Nmech')
             self.connect('shaft.pwr_in', 'balance.lhs:Nmech')
             self.connect('shaft.pwr_out', 'balance.rhs:Nmech')
 
-            balance.add_balance('W', val=100.0, units='lbm/s', eq_units=None, rhs_val=2.0)
+            balance.add_balance('W', val=100.0, units=get_unit('mass_flow', unit_system), eq_units=None, rhs_val=2.0)
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('comp.map.RlineMap', 'balance.lhs:W')
 
@@ -262,10 +264,10 @@ if __name__ == "__main__":
 
     # Set initial guesses for balances
     prob['DESIGN.balance.FAR'] = 0.01755078
-    prob['DESIGN.balance.W'] = 168.00454616
+    prob.set_val('DESIGN.balance.W', 168.00454616, units='lbm/s')
     prob['DESIGN.balance.turb_PR'] = 4.46131867
-    prob['DESIGN.fc.balance.Pt'] = 14.6959
-    prob['DESIGN.fc.balance.Tt'] = 518.67
+    prob.set_val('DESIGN.fc.balance.Pt', 14.6959, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 518.67, units='degR')
 
     W_guess = [168.0, 225., 168.005, 225.917, 166.074, 141.2, 61.70780608, 145.635, 71.53855266, 33.347]
     FAR_guess = [.01755, .01, .01755, .01629, .0168, .01689, 0.01872827, .016083, 0.01619524, 0.015170]
@@ -274,7 +276,7 @@ if __name__ == "__main__":
 
     for i, pt in enumerate(mp_abturbojet.od_pts):
         # initial guesses
-        prob[pt+'.balance.W'] = W_guess[i]
+        prob.set_val(pt+'.balance.W', W_guess[i], units='lbm/s')
         prob[pt+'.balance.FAR'] = FAR_guess[i]
         prob[pt+'.balance.Nmech'] = Nmech_guess[i]
         prob[pt+'.turb.PR'] = PR_guess[i]

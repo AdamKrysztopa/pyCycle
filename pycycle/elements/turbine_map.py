@@ -2,25 +2,29 @@ import openmdao.api as om
 
 from pycycle.maps.lpt2269 import LPT2269
 from pycycle.maps.map_data import normalize_map_data
+from pycycle.unit_utils import get_unit
 
 
 class MapScalars(om.ExplicitComponent):
     """Compute map scalars"""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
+        unit_system = self.options['unit_system']
         self.add_input('eff', val=2.0,
                        desc='Design adiabatic efficiency')
         self.add_input('Np', val=2.0, units='rpm',
                        desc='Computed design referred shaft speed')
         self.add_input('PR', val=2.0, desc='Design pressure ratio')
-        self.add_input('Wp', val=2.0, units='lbm/s',
+        self.add_input('Wp', val=2.0, units=get_unit('mass_flow', unit_system),
                        desc='Computed design referred mass flow rate')
         self.add_input('effMap', val=2.0,
                        desc='Design adiabatic efficiency of map')
         self.add_input('NpMap', val=1.0, units='rpm',
                        desc='Design referred shaft speed of map')
         self.add_input('PRmap', val=1.0, desc='Design pressure ratio of map')
-        self.add_input('WpMap', val=2.0, units='lbm/s',
+        self.add_input('WpMap', val=2.0, units=get_unit('mass_flow', unit_system),
                        desc='Design referred mass flow rate of map')
 
         self.add_output('s_eff', shape=1,
@@ -55,13 +59,16 @@ class MapScalars(om.ExplicitComponent):
 
 class ScaledMapValues(om.ExplicitComponent):
     """Scale map output"""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
+        unit_system = self.options['unit_system']
         self.add_input('effMap', val=1.0, desc='Efficiency from unscaled map')
         self.add_input('NpMap', val=1.0, units='rpm',
                        desc='Referred shaft speed from unscaled map')
         self.add_input('PRmap', val=1.0, desc='Pressure ratio from unscaled map')
-        self.add_input('WpMap', val=1.0, units='lbm/s',
+        self.add_input('WpMap', val=1.0, units=get_unit('mass_flow', unit_system),
                        desc='Referred mass flow rate from unscaled map')
         self.add_input('s_eff', val=1.0,
                        desc='Scalar for adiabatic efficiency')
@@ -74,7 +81,7 @@ class ScaledMapValues(om.ExplicitComponent):
         self.add_output('eff', shape=1, desc='Adiabatic efficiency')
         self.add_output('Np', shape=1, units='rpm', desc='Referred shaft speed')
         self.add_output('PR', shape=1, desc='Pressure ratio')
-        self.add_output('Wp', shape=1, units='lbm/s', desc='Referred mass flow rate')
+        self.add_output('Wp', shape=1, units=get_unit('mass_flow', unit_system), desc='Referred mass flow rate')
 
         self.declare_partials('eff', ['effMap', 's_eff'])
         self.declare_partials('Np', ['NpMap', 's_Np'])
@@ -106,6 +113,7 @@ class TurbineMap(om.Group):
         self.options.declare('design', default=True)
         self.options.declare('interp_method', default='slinear')
         self.options.declare('extrap', default=False)
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
 
@@ -113,6 +121,7 @@ class TurbineMap(om.Group):
         design = self.options['design']
         method = self.options['interp_method']
         extrap = self.options['extrap']
+        unit_system = self.options['unit_system']
 
         params = map_data.param_data
         outputs = map_data.output_data
@@ -136,7 +145,7 @@ class TurbineMap(om.Group):
                                 promotes_outputs=['effMap', 'WpMap'])
 
             # Compute map scalars based on input PR, eff, Np and Wp as well as unscaled map values
-            self.add_subsystem('scalars', MapScalars(),
+            self.add_subsystem('scalars', MapScalars(unit_system=unit_system),
                                 promotes_inputs=['PR', 'eff', 'Np', 'Wp', 'NpMap', 'effMap', 'PRmap', 'WpMap'],
                                 promotes_outputs=['s_Np', 's_PR', 's_eff', 's_Wp'])
 
@@ -146,7 +155,7 @@ class TurbineMap(om.Group):
                                 promotes_outputs=['effMap', 'WpMap'])
 
             # Compute scaled map outputs base on input scalars and unscaled map values
-            self.add_subsystem('scaledOutput', ScaledMapValues(),
+            self.add_subsystem('scaledOutput', ScaledMapValues(unit_system=unit_system),
                                 promotes_inputs=['s_PR', 's_eff', 's_Wp', 's_Np', 'NpMap', 'effMap', 'PRmap', 'WpMap'],
                                 promotes_outputs=['PR', 'eff'])
 
@@ -154,7 +163,7 @@ class TurbineMap(om.Group):
             map_bal = om.BalanceComp()
             map_bal.add_balance('NpMap', val=map_data.defaults['NpMap'], units='rpm', eq_units='rpm', lower=.1, upper=200.)
             map_bal.add_balance('PRmap', val=map_data.defaults['PRmap'], units=None,
-                                eq_units='lbm/s', lower=1.01)
+                                eq_units=get_unit('mass_flow', unit_system), lower=1.01)
             self.add_subsystem(name='map_bal', subsys=map_bal,
                                 promotes_inputs=[('lhs:NpMap','Np'),('lhs:PRmap','Wp')],
                                 promotes_outputs=['NpMap', 'PRmap'])

@@ -5,6 +5,7 @@ import numpy as np
 import openmdao.api as om
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
 
 
 class SingleSpoolTurboshaft(pyc.Cycle):
@@ -12,6 +13,7 @@ class SingleSpoolTurboshaft(pyc.Cycle):
     def setup(self):
 
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         USE_TABULAR = False
         if USE_TABULAR: 
@@ -66,33 +68,33 @@ class SingleSpoolTurboshaft(pyc.Cycle):
         balance = self.add_subsystem('balance', om.BalanceComp())
         if design:
 
-            balance.add_balance('W', val=27.0, units='lbm/s', eq_units=None, rhs_name='nozz_PR_target')
+            balance.add_balance('W', val=27.0, units=get_unit('mass_flow', unit_system), eq_units=None, rhs_name='nozz_PR_target')
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('nozz.PR', 'balance.lhs:W')
 
-            balance.add_balance('FAR', eq_units='degR', lower=1e-4, val=.017, rhs_name='T4_target')
+            balance.add_balance('FAR', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017, rhs_name='T4_target')
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR')
 
-            balance.add_balance('turb_PR', val=3.0, lower=1.001, upper=8, eq_units='hp', rhs_val=0.)
+            balance.add_balance('turb_PR', val=3.0, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.turb_PR', 'turb.PR')
             self.connect('HP_shaft.pwr_net', 'balance.lhs:turb_PR')
 
-            balance.add_balance('pt_PR', val=3.0, lower=1.001, upper=8, eq_units='hp', rhs_name='pwr_target')
+            balance.add_balance('pt_PR', val=3.0, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), rhs_name='pwr_target')
             self.connect('balance.pt_PR', 'pt.PR')
             self.connect('LP_shaft.pwr_net', 'balance.lhs:pt_PR')
 
         else:
 
-            balance.add_balance('FAR', eq_units='hp', lower=1e-4, val=.3, rhs_name='pwr_target')
+            balance.add_balance('FAR', eq_units=get_unit('power', unit_system), lower=1e-4, val=.3, rhs_name='pwr_target')
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('LP_shaft.pwr_net', 'balance.lhs:FAR')
 
-            balance.add_balance('HP_Nmech', val=1.5, units='rpm', lower=500., eq_units='hp', rhs_val=0.)
+            balance.add_balance('HP_Nmech', val=1.5, units='rpm', lower=500., eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.HP_Nmech', 'HP_Nmech')
             self.connect('HP_shaft.pwr_net', 'balance.lhs:HP_Nmech')
 
-            balance.add_balance('W', val=27.0, units='lbm/s', eq_units='inch**2')
+            balance.add_balance('W', val=27.0, units=get_unit('mass_flow', unit_system), eq_units=get_unit('area', unit_system))
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('nozz.Throat:stat:area', 'balance.lhs:W')
 
@@ -231,22 +233,22 @@ if __name__ == "__main__":
 
     # Set initial guesses for balances
     prob['DESIGN.balance.FAR'] = 0.0175506829934
-    prob['DESIGN.balance.W'] = 27.265
+    prob.set_val('DESIGN.balance.W', 27.265, units='lbm/s')
     prob['DESIGN.balance.turb_PR'] = 3.8768
 
     prob['DESIGN.balance.pt_PR'] = 2.
-    prob['DESIGN.fc.balance.Pt'] = 14.69551131598148
-    prob['DESIGN.fc.balance.Tt'] = 518.665288153
+    prob.set_val('DESIGN.fc.balance.Pt', 14.69551131598148, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 518.665288153, units='degR')
 
     for i,pt in enumerate(mp_single_spool.od_pts):
 
         # initial guesses
-        prob[pt+'.balance.W'] = 27.265
+        prob.set_val(pt+'.balance.W', 27.265, units='lbm/s')
         prob[pt+'.balance.FAR'] = 0.0175506829934
 
-        prob[pt+'.balance.HP_Nmech'] = 8070.0
-        prob[pt+'.fc.balance.Pt'] = 15.703
-        prob[pt+'.fc.balance.Tt'] = 558.31
+        prob.set_val(pt+'.balance.HP_Nmech', 8070.0, units='rpm')
+        prob.set_val(pt+'.fc.balance.Pt', 15.703, units='psi')
+        prob.set_val(pt+'.fc.balance.Tt', 558.31, units='degR')
         prob[pt+'.turb.PR'] = 3.8768
         prob[pt+'.pt.PR'] = 2.0
 

@@ -2,19 +2,24 @@ import openmdao.api as om
 
 from pycycle.maps.map_data import normalize_map_data
 from pycycle.maps.ncp01 import NCP01
+from pycycle.unit_utils import get_unit
 
 
 class StallCalcs(om.ExplicitComponent):
     """Component to compute the stall margins at constant speed (SMN) and constant flow (SMW)"""
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
+        unit_system = self.options['unit_system']
 
         self.add_input('PR_SMN', val=1.0, units=None, desc='SMN pressure ratio')
         self.add_input('PR_SMW', val=1.0, units=None, desc='SMW pressure ratio')
         self.add_input('PR_actual', val=1.0, units=None, desc='Actual pressure ratio')
 
-        self.add_input('Wc_SMN', val=1.0, units='lbm/s', desc='SMN corrected flow')
-        self.add_input('Wc_actual', val=1.0, units='lbm/s', desc='Actual corrected flow')
+        self.add_input('Wc_SMN', val=1.0, units=get_unit('mass_flow', unit_system), desc='SMN corrected flow')
+        self.add_input('Wc_actual', val=1.0, units=get_unit('mass_flow', unit_system), desc='Actual corrected flow')
 
         self.add_output('SMN', val=0.0, units=None, desc='Stall margin at constant speed')
         self.add_output('SMW', val=0.0, units=None, desc='Stall margin at constant flow')
@@ -52,7 +57,11 @@ class StallCalcs(om.ExplicitComponent):
 class MapScalars(om.ExplicitComponent):
     """Compute map scalars in design mode"""
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
     def setup(self):
+        unit_system = self.options['unit_system']
 
         self.add_input('Nc', val=2.0, units='rpm',
                        desc='Computed design corrected shaft speed')
@@ -66,9 +75,9 @@ class MapScalars(om.ExplicitComponent):
                        desc='User input design adiabatic efficiency')
         self.add_input('effMap', val=1.0,
                        desc='Design adiabatic efficiency of map')
-        self.add_input('Wc', val=2.0, units='lbm/s',
+        self.add_input('Wc', val=2.0, units=get_unit('mass_flow', unit_system),
                        desc='Computed design corrected mass flow rate')
-        self.add_input('WcMap', val=2.0, units='lbm/s',
+        self.add_input('WcMap', val=2.0, units=get_unit('mass_flow', unit_system),
                        desc='Design corrected mass flow rate of map')
 
         self.add_output('s_Nc', shape=1,
@@ -105,13 +114,17 @@ class MapScalars(om.ExplicitComponent):
 class ScaledMapValues(om.ExplicitComponent):
     """Computes scaled map values for off-design mode"""
 
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
+
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         self.add_input('effMap', val=2.0, desc='Efficiency from unscaled map')
         self.add_input('PRmap', val=2.0,
                        desc='Pressure ratio from unscaled map')
-        self.add_input('WcMap', val=2.0, units='lbm/s',
+        self.add_input('WcMap', val=2.0, units=get_unit('mass_flow', unit_system),
                        desc='Corrected mass flow rate from unscaled map')
         self.add_input('NcMap', val=2.0, units='rpm',
                        desc='Corrected shaft speed from unscaled map')
@@ -127,7 +140,7 @@ class ScaledMapValues(om.ExplicitComponent):
         self.add_output('PR', shape=1, desc='Pressure ratio', lower=1.00001)
         self.add_output('eff', shape=1, desc='Adiabatic efficiency')
         self.add_output('Wc', shape=1,
-                        desc='Corrected mass flow rate', units='lbm/s')
+                        desc='Corrected mass flow rate', units=get_unit('mass_flow', unit_system))
         self.add_output('Nc', shape=1,
                         desc='Corrected shaft speed', units='rpm')
 
@@ -161,6 +174,7 @@ class CompressorMap(om.Group):
         self.options.declare('design', default=True)
         self.options.declare('interp_method', default='slinear')
         self.options.declare('extrap', default=False)
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
 
@@ -168,6 +182,7 @@ class CompressorMap(om.Group):
         design = self.options['design']
         method = self.options['interp_method']
         extrap = self.options['extrap']
+        unit_system = self.options['unit_system']
 
         params = map_data.param_data
         outputs = map_data.output_data
@@ -190,7 +205,7 @@ class CompressorMap(om.Group):
                                 promotes_outputs=['effMap', 'PRmap', 'WcMap'])
 
             # Compute map scalars based on input PR, eff, Nc and Wc as well as unscaled map values
-            self.add_subsystem('scalars', MapScalars(),
+            self.add_subsystem('scalars', MapScalars(unit_system=unit_system),
                                 promotes_inputs=['PR', 'eff', 'Nc', 'Wc', 'NcMap', 'effMap', 'PRmap', 'WcMap'],
                                 promotes_outputs=['s_Nc', 's_PR', 's_eff', 's_Wc'])
 
@@ -200,7 +215,7 @@ class CompressorMap(om.Group):
                                 promotes_outputs=['effMap', 'PRmap', 'WcMap'])
 
             # Compute scaled map outputs base on input scalars and unscaled map values
-            self.add_subsystem('scaledOutput', ScaledMapValues(),
+            self.add_subsystem('scaledOutput', ScaledMapValues(unit_system=unit_system),
                                 promotes_inputs=['s_PR', 's_eff', 's_Wc', 's_Nc', 'NcMap', 'effMap', 'PRmap', 'WcMap'],
                                 promotes_outputs=['PR', 'eff'])
 
@@ -208,7 +223,7 @@ class CompressorMap(om.Group):
             map_bal = om.BalanceComp()
             map_bal.add_balance('NcMap', val=map_data.defaults['NcMap'], units='rpm', eq_units='rpm')
             map_bal.add_balance('RlineMap', val=map_data.defaults['RlineMap'], units=None, 
-                                eq_units='lbm/s', lower=map_data.RlineStall)
+                                eq_units=get_unit('mass_flow', unit_system), lower=map_data.RlineStall)
             self.add_subsystem(name='map_bal', subsys=map_bal, 
                                 promotes_inputs=[('lhs:NcMap','Nc'),('lhs:RlineMap','Wc')],
                                 promotes_outputs=['NcMap', 'RlineMap'])
@@ -241,14 +256,14 @@ class CompressorMap(om.Group):
 
         # Use balance to vary NcMap on SMW map to hold corrected flow constant
         SMW_bal = om.BalanceComp()
-        SMW_bal.add_balance('NcMap', val=map_data.defaults['NcMap'], units='rpm', eq_units='lbm/s')
+        SMW_bal.add_balance('NcMap', val=map_data.defaults['NcMap'], units='rpm', eq_units=get_unit('mass_flow', unit_system))
         self.add_subsystem(name='SMW_bal', subsys=SMW_bal)
         self.connect('SMW_bal.NcMap', 'SMW_map.NcMap')
         self.connect('WcMap','SMW_bal.lhs:NcMap')
         self.connect('SMW_map.WcMap','SMW_bal.rhs:NcMap')
 
         # Compute the stall margins
-        self.add_subsystem('stall_margins', StallCalcs(), 
+        self.add_subsystem('stall_margins', StallCalcs(unit_system=unit_system), 
                                 promotes_inputs=[('PR_actual','PRmap'),('Wc_actual','WcMap')],
                                 promotes_outputs=['SMN','SMW'])
         self.connect('SMN_map.PRmap', 'stall_margins.PR_SMN')
@@ -269,7 +284,7 @@ if __name__ == "__main__":
     ivc.add_output('PR', 2.0)
     ivc.add_output('Nc', 1000.0, units='rpm')
     ivc.add_output('eff', .9)
-    ivc.add_output('Wc', 3000., units='lbm/s')
+    ivc.add_output('Wc', 3000., units=get_unit('mass_flow', 'ENG'))
 
     # Off-design variables
     # ivc.add_output('alphaMap', 0.0)

@@ -138,6 +138,10 @@ prob.model.list_outputs()
 'comp.PR'     # Pressure ratio
 'comp.eff'    # Adiabatic efficiency
 'comp.map.RlineMap'  # Map R-line parameter
+# Optional bleed controls (dimensionless fractions)
+'comp.<bleed>:frac_W'     # W_bleed / W_in (local compressor inlet basis)
+'comp.<bleed>:frac_P'     # (Pt_bleed - Pt_in) / (Pt_out - Pt_in)
+'comp.<bleed>:frac_work'  # (ht_bleed - ht_in) / (ht_out - ht_in)
 ```
 
 ### Combustor
@@ -151,6 +155,13 @@ prob.model.list_outputs()
 ```python
 'turb.PR'     # Pressure ratio
 'turb.eff'    # Adiabatic efficiency
+# Turbine bleed pressure placement fraction (dimensionless)
+'turb.<bleed>:frac_P'  # Pt_bleed = Pt_out + frac_P * (Pt_in - Pt_out)
+```
+
+### BleedOut
+```python
+'bld.<bleed>:frac_W'  # W_bleed / W_in at that BleedOut element inlet
 ```
 
 ### Nozzle

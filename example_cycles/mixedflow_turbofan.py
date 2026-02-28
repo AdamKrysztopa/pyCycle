@@ -3,12 +3,14 @@ import argparse
 import openmdao.api as om
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
 
 
 class MixedFlowTurbofan(pyc.Cycle):
 
     def setup(self):
         design = self.options['design']
+        unit_system = self.options['unit_system']
 
         USE_TABULAR = False
 
@@ -116,7 +118,13 @@ class MixedFlowTurbofan(pyc.Cycle):
         # Add balence components to close the implicit components
         balance = self.add_subsystem('balance', om.BalanceComp())
         if design:
-            balance.add_balance('W', lower=1e-3, upper=200., units='lbm/s', eq_units='lbf')
+            balance.add_balance(
+                'W',
+                lower=1e-3,
+                upper=200.,
+                units=get_unit('mass_flow', unit_system),
+                eq_units=get_unit('force', unit_system),
+            )
             self.connect('balance.W', 'fc.W')
             self.connect('perf.Fn', 'balance.lhs:W')
             # self.add_subsystem('wDV',IndepVarComp('wDes',100,units='lbm/s'))
@@ -126,48 +134,54 @@ class MixedFlowTurbofan(pyc.Cycle):
             self.connect('balance.BPR', 'splitter.BPR')
             self.connect('mixer.ER', 'balance.lhs:BPR')
 
-            balance.add_balance('FAR_core', eq_units='degR', lower=1e-4, val=.017)
+            balance.add_balance('FAR_core', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017)
             self.connect('balance.FAR_core', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR_core')
 
-            balance.add_balance('FAR_ab', eq_units='degR', lower=1e-4, val=.017)
+            balance.add_balance('FAR_ab', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017)
             self.connect('balance.FAR_ab', 'afterburner.Fl_I:FAR')
             self.connect('afterburner.Fl_O:tot:T', 'balance.lhs:FAR_ab')
 
-            balance.add_balance('lpt_PR', val=1.5, lower=1.001, upper=8, eq_units='hp', use_mult=True, mult_val=-1)
+            balance.add_balance('lpt_PR', val=1.5, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.lpt_PR', 'lpt.PR')
             self.connect('lp_shaft.pwr_in', 'balance.lhs:lpt_PR')
             self.connect('lp_shaft.pwr_out', 'balance.rhs:lpt_PR')
 
-            balance.add_balance('hpt_PR', val=1.5, lower=1.001, upper=8, eq_units='hp', use_mult=True, mult_val=-1)
+            balance.add_balance('hpt_PR', val=1.5, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.hpt_PR', 'hpt.PR')
             self.connect('hp_shaft.pwr_in', 'balance.lhs:hpt_PR')
             self.connect('hp_shaft.pwr_out', 'balance.rhs:hpt_PR')
         else:
 
-            balance.add_balance('W', lower=1e-3, upper=200., units='lbm/s', eq_units='inch**2')
+            balance.add_balance(
+                'W',
+                lower=1e-3,
+                upper=200.,
+                units=get_unit('mass_flow', unit_system),
+                eq_units=get_unit('area', unit_system),
+            )
             self.connect('balance.W', 'fc.W')
             self.connect('mixed_nozz.Throat:stat:area', 'balance.lhs:W')
 
-            balance.add_balance('BPR', lower=0.25, upper=5.0, eq_units='psi')
+            balance.add_balance('BPR', lower=0.25, upper=5.0, eq_units=get_unit('pressure', unit_system))
             self.connect('balance.BPR', 'splitter.BPR')
             self.connect('mixer.Fl_I1_calc:stat:P', 'balance.lhs:BPR')
             self.connect('bypass_duct.Fl_O:stat:P', 'balance.rhs:BPR')
 
-            balance.add_balance('FAR_core', eq_units='degR', lower=1e-4, upper=.06, val=.017)
+            balance.add_balance('FAR_core', eq_units=get_unit('temperature', unit_system), lower=1e-4, upper=.06, val=.017)
             self.connect('balance.FAR_core', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR_core')
 
-            balance.add_balance('FAR_ab', eq_units='degR', lower=1e-4, upper=.06, val=.017)
+            balance.add_balance('FAR_ab', eq_units=get_unit('temperature', unit_system), lower=1e-4, upper=.06, val=.017)
             self.connect('balance.FAR_ab', 'afterburner.Fl_I:FAR')
             self.connect('afterburner.Fl_O:tot:T', 'balance.lhs:FAR_ab')
 
-            balance.add_balance('LP_Nmech', val=1., units='rpm', lower=500., eq_units='hp', use_mult=True, mult_val=-1)
+            balance.add_balance('LP_Nmech', val=1., units='rpm', lower=500., eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.LP_Nmech', 'LP_Nmech')
             self.connect('lp_shaft.pwr_in', 'balance.lhs:LP_Nmech')
             self.connect('lp_shaft.pwr_out', 'balance.rhs:LP_Nmech')
 
-            balance.add_balance('HP_Nmech', val=1., units='rpm', lower=500., eq_units='hp', use_mult=True, mult_val=-1)
+            balance.add_balance('HP_Nmech', val=1., units='rpm', lower=500., eq_units=get_unit('power', unit_system), use_mult=True, mult_val=-1)
             self.connect('balance.HP_Nmech', 'HP_Nmech')
             self.connect('hp_shaft.pwr_in', 'balance.lhs:HP_Nmech')
             self.connect('hp_shaft.pwr_out', 'balance.rhs:HP_Nmech')
@@ -367,24 +381,24 @@ if __name__ == "__main__":
     prob['DESIGN.balance.FAR_core'] = 0.025
     prob['DESIGN.balance.FAR_ab'] = 0.025
     prob['DESIGN.balance.BPR'] = 1.0
-    prob['DESIGN.balance.W'] = 100.
+    prob.set_val('DESIGN.balance.W', 100., units='lbm/s')
     prob['DESIGN.balance.lpt_PR'] = 3.5
     prob['DESIGN.balance.hpt_PR'] = 2.5
-    prob['DESIGN.fc.balance.Pt'] = 5.2
-    prob['DESIGN.fc.balance.Tt'] = 440.0
-    prob['DESIGN.mixer.balance.P_tot']= 15
+    prob.set_val('DESIGN.fc.balance.Pt', 5.2, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 440.0, units='degR')
+    prob.set_val('DESIGN.mixer.balance.P_tot', 15, units='psi')
 
     for i,pt in enumerate(mp_mixedflow.od_pts):
 
         prob[pt+'.balance.FAR_core'] = 0.025
         prob[pt+'.balance.FAR_ab'] = 0.025
         prob[pt+'.balance.BPR'] = 2.5
-        prob[pt+'.balance.W'] = 50.
-        prob[pt+'.balance.HP_Nmech'] = 14000
-        prob[pt+'.balance.LP_Nmech'] = 4000
-        prob[pt+'.fc.balance.Pt'] = 5.2
-        prob[pt+'.fc.balance.Tt'] = 440.0
-        prob[pt+'.mixer.balance.P_tot']= 15
+        prob.set_val(pt+'.balance.W', 50., units='lbm/s')
+        prob.set_val(pt+'.balance.HP_Nmech', 14000, units='rpm')
+        prob.set_val(pt+'.balance.LP_Nmech', 4000, units='rpm')
+        prob.set_val(pt+'.fc.balance.Pt', 5.2, units='psi')
+        prob.set_val(pt+'.fc.balance.Tt', 440.0, units='degR')
+        prob.set_val(pt+'.mixer.balance.P_tot', 15, units='psi')
         prob[pt+'.hpt.PR'] = 2.0
         prob[pt+'.lpt.PR'] = 4.0
         prob[pt+'.fan.map.RlineMap'] = 2.0

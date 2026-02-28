@@ -5,11 +5,13 @@ import numpy as np
 import openmdao.api as om
 
 import pycycle.api as pyc
+from pycycle.unit_utils import get_unit
 
 
 class Turbojet(pyc.Cycle):
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         USE_TABULAR = True
 
@@ -62,29 +64,29 @@ class Turbojet(pyc.Cycle):
         balance = self.add_subsystem('balance', om.BalanceComp())
         if design:
 
-            balance.add_balance('W', units='lbm/s', eq_units='lbf', rhs_name='Fn_target')
+            balance.add_balance('W', units=get_unit('mass_flow', unit_system), eq_units=get_unit('force', unit_system), rhs_name='Fn_target')
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('perf.Fn', 'balance.lhs:W')
 
-            balance.add_balance('FAR', eq_units='degR', lower=1e-4, val=.017, rhs_name='T4_target')
+            balance.add_balance('FAR', eq_units=get_unit('temperature', unit_system), lower=1e-4, val=.017, rhs_name='T4_target')
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('burner.Fl_O:tot:T', 'balance.lhs:FAR')
 
-            balance.add_balance('turb_PR', val=1.5, lower=1.001, upper=8, eq_units='hp', rhs_val=0.)
+            balance.add_balance('turb_PR', val=1.5, lower=1.001, upper=8, eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.turb_PR', 'turb.PR')
             self.connect('shaft.pwr_net', 'balance.lhs:turb_PR')
 
         else:
 
-            balance.add_balance('FAR', eq_units='lbf', lower=1e-4, val=.3, rhs_name='Fn_target')
+            balance.add_balance('FAR', eq_units=get_unit('force', unit_system), lower=1e-4, val=.3, rhs_name='Fn_target')
             self.connect('balance.FAR', 'burner.Fl_I:FAR')
             self.connect('perf.Fn', 'balance.lhs:FAR')
 
-            balance.add_balance('Nmech', val=1.5, units='rpm', lower=500., eq_units='hp', rhs_val=0.)
+            balance.add_balance('Nmech', val=1.5, units='rpm', lower=500., eq_units=get_unit('power', unit_system), rhs_val=0.)
             self.connect('balance.Nmech', 'Nmech')
             self.connect('shaft.pwr_net', 'balance.lhs:Nmech')
 
-            balance.add_balance('W', val=168.0, units='lbm/s', eq_units='inch**2')
+            balance.add_balance('W', val=168.0, units=get_unit('mass_flow', unit_system), eq_units=get_unit('area', unit_system))
             self.connect('balance.W', 'inlet.Fl_I:stat:W')
             self.connect('nozz.Throat:stat:area', 'balance.lhs:W')
 
@@ -189,7 +191,7 @@ class MPTurbojet(pyc.MPCycle):
 
             self.set_input_defaults(pt+'.fc.MN', val=self.od_MNs[i])
             self.set_input_defaults(pt+'.fc.alt', self.od_alts[i], units='ft')
-            self.set_input_defaults(pt+'.balance.Fn_target', self.od_Fns[i], units='lbf')  
+            self.set_input_defaults(pt+'.balance.Fn_target', self.od_Fns[i], units='lbf')
 
         self.pyc_use_default_des_od_conns()
 
@@ -218,26 +220,26 @@ if __name__ == "__main__":
     prob.set_val('DESIGN.fc.alt', 0, units='ft')
     prob.set_val('DESIGN.fc.MN', 0.000001)
     prob.set_val('DESIGN.balance.Fn_target', 11800.0, units='lbf')
-    prob.set_val('DESIGN.balance.T4_target', 2370.0, units='degR') 
+    prob.set_val('DESIGN.balance.T4_target', 2370.0, units='degR')
     prob.set_val('DESIGN.comp.PR', 13.5) 
     prob.set_val('DESIGN.comp.eff', 0.83)
     prob.set_val('DESIGN.turb.eff', 0.86)
 
     # Set initial guesses for balances
     prob['DESIGN.balance.FAR'] = 0.0175506829934
-    prob['DESIGN.balance.W'] = 168.453135137
+    prob.set_val('DESIGN.balance.W', 168.453135137, units='lbm/s')
     prob['DESIGN.balance.turb_PR'] = 4.46138725662
-    prob['DESIGN.fc.balance.Pt'] = 14.6955113159
-    prob['DESIGN.fc.balance.Tt'] = 518.665288153
+    prob.set_val('DESIGN.fc.balance.Pt', 14.6955113159, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 518.665288153, units='degR')
 
     for i,pt in enumerate(mp_turbojet.od_pts):
 
         # initial guesses
-        prob[pt+'.balance.W'] = 166.073
+        prob.set_val(pt+'.balance.W', 166.073, units='lbm/s')
         prob[pt+'.balance.FAR'] = 0.01680
         prob[pt+'.balance.Nmech'] = 8197.38
-        prob[pt+'.fc.balance.Pt'] = 15.703
-        prob[pt+'.fc.balance.Tt'] = 558.31
+        prob.set_val(pt+'.fc.balance.Pt', 15.703, units='psi')
+        prob.set_val(pt+'.fc.balance.Tt', 558.31, units='degR')
         prob[pt+'.turb.PR'] = 4.6690
 
     st = time.time()

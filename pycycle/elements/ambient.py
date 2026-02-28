@@ -1,18 +1,22 @@
 import openmdao.api as om
 
 from pycycle.elements.US1976 import USatm1976Comp
+from pycycle.unit_utils import get_unit
 
 
 class DeltaTs(om.ExplicitComponent):
     """Computes temperature based on delta from atmospheric"""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
+        unit_system = self.options['unit_system']
 
         # inputs
-        self.add_input('Ts_in', val=500.0, units='degR', desc='Temperature from atmospheric model')
-        self.add_input('dTs', val=0.0, units='degR', desc='Delta from standard day temperature')
+        self.add_input('Ts_in', val=500.0, units=get_unit('temperature', unit_system), desc='Temperature from atmospheric model')
+        self.add_input('dTs', val=0.0, units=get_unit('temperature', unit_system), desc='Delta from standard day temperature')
 
-        self.add_output('Ts', shape=1, units='degR', desc='Temperature with delta')
+        self.add_output('Ts', shape=1, units=get_unit('temperature', unit_system), desc='Temperature with delta')
 
         self.declare_partials('Ts', ['Ts_in', 'dTs'], val=1.0)
 
@@ -25,11 +29,13 @@ class DeltaTs(om.ExplicitComponent):
 
 class Ambient(om.Group):
     """Determines pressure, temperature and density base on altitude from an input standard atmosphere table"""
+    def initialize(self):
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
         self.add_subsystem('readAtmTable', USatm1976Comp(), promotes=('alt', 'Ps', 'rhos'))
 
-        self.add_subsystem('dTs', DeltaTs(), promotes=('dTs', 'Ts'))
+        self.add_subsystem('dTs', DeltaTs(unit_system=self.options['unit_system']), promotes=('dTs', 'Ts'))
         self.connect('readAtmTable.Ts', 'dTs.Ts_in')
 
         # self.set_order(['readAtmTable','dTs'])

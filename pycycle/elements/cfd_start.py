@@ -3,6 +3,7 @@ import openmdao.api as om
 from pycycle.constants import THERMO_DEFAULT_COMPOSITIONS
 from pycycle.elements.flow_start import FlowStart
 from pycycle.element_base import Element
+from pycycle.unit_utils import get_unit
 
 class CFDStart(Element):
 
@@ -23,23 +24,24 @@ class CFDStart(Element):
     def setup(self):
         thermo_method = self.options['thermo_method']
         thermo_data = self.options['thermo_data']
+        unit_system = self.options['unit_system']
         
         composition = self.Fl_O_data['Fl_O']
 
 
         fs = self.add_subsystem('fs', FlowStart(thermo_method=thermo_method,thermo_data=thermo_data, 
-                                composition=composition), promotes_outputs=['Fl_O:*'],promotes_inputs=['W'])
+                                composition=composition, unit_system=unit_system), promotes_outputs=['Fl_O:*'],promotes_inputs=['W'])
         fs.pyc_setup_output_ports()
 
 
         balance = om.BalanceComp()
-        balance.add_balance('P', val=10., units='psi', eq_units='psi', lhs_name='Ps_computed', rhs_name='Ps',
+        balance.add_balance('P', val=10., units=get_unit('pressure', unit_system), eq_units=get_unit('pressure', unit_system), lhs_name='Ps_computed', rhs_name='Ps',
                             lower=1e-1)
                             #guess_func=lambda inputs, resids: 5.)
-        balance.add_balance('T', val=800., units='degR', eq_units='ft/s', lhs_name='V_computed', rhs_name='V',
+        balance.add_balance('T', val=800., units=get_unit('temperature', unit_system), eq_units=get_unit('velocity', unit_system), lhs_name='V_computed', rhs_name='V',
                             lower=1e-1)
                             #guess_func=lambda inputs, resids: 400.)
-        balance.add_balance('MN', val=.3, eq_units='inch**2', lhs_name='area_computed', rhs_name='area', lower=1e-6)
+        balance.add_balance('MN', val=.3, eq_units=get_unit('area', unit_system), lhs_name='area_computed', rhs_name='area', lower=1e-6)
                             #guess_func=lambda inputs, resids: .6)
 
         self.add_subsystem('balance', balance, promotes_inputs=['Ps', 'V', 'area'])
@@ -82,7 +84,6 @@ if __name__ == "__main__":
     p.run_model()
 
     p.model.list_outputs(residuals=True)
-
 
 
 

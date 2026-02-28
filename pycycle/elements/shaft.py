@@ -1,6 +1,7 @@
 import numpy as np
 
 from openmdao.api import ExplicitComponent
+from pycycle.unit_utils import POWER_PER_RPM_TO_TORQUE, get_unit
 
 
 class Shaft(ExplicitComponent):
@@ -10,31 +11,32 @@ class Shaft(ExplicitComponent):
     def initialize(self):
         self.options.declare('num_ports', default=2,
                               desc="number shaft connections to make")
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
 
         num_ports = self.options['num_ports']
+        unit_system = self.options['unit_system']
 
         self.add_input('Nmech', val = 1000.0, units="rpm")
-        self.add_input('HPX', val = 0.0, units='hp')
+        self.add_input('HPX', val = 0.0, units=get_unit('power', unit_system))
         self.add_input('fracLoss', val = 0.0)
 
-        self.add_output('trq_in', val=1.0, units='ft*lbf')
-        self.add_output('trq_out', val=1.0, units='ft*lbf')
-        self.add_output('trq_net', val=1.0, units='ft*lbf')
-        self.add_output('pwr_in', val=1.0, units='hp')
-        self.add_output('pwr_in_real', val=1.0, units='hp')
-        self.add_output('pwr_out', val=1.0, units='hp')
-        self.add_output('pwr_out_real', val=1.0, units='hp')
-        self.add_output('pwr_net', val=1.0, units='hp')
+        self.add_output('trq_in', val=1.0, units=get_unit('torque', unit_system))
+        self.add_output('trq_out', val=1.0, units=get_unit('torque', unit_system))
+        self.add_output('trq_net', val=1.0, units=get_unit('torque', unit_system))
+        self.add_output('pwr_in', val=1.0, units=get_unit('power', unit_system))
+        self.add_output('pwr_in_real', val=1.0, units=get_unit('power', unit_system))
+        self.add_output('pwr_out', val=1.0, units=get_unit('power', unit_system))
+        self.add_output('pwr_out_real', val=1.0, units=get_unit('power', unit_system))
+        self.add_output('pwr_net', val=1.0, units=get_unit('power', unit_system))
 
-        HP_to_FT_LBF_per_SEC = 550
-        self.convert = 2. * np.pi / 60. / HP_to_FT_LBF_per_SEC
+        self.convert = 1.0 / POWER_PER_RPM_TO_TORQUE[unit_system]
 
         self.trq_vars = []
         for i in range(num_ports):
             trq_var_name = 'trq_{:d}'.format(i)
-            self.add_input(trq_var_name, val=0., units='ft*lbf')
+            self.add_input(trq_var_name, val=0., units=get_unit('torque', unit_system))
 
             self.trq_vars.append(trq_var_name)
 

@@ -1,6 +1,7 @@
 """Unit system helpers for pyCycle."""
 
 from __future__ import annotations
+import math
 
 UNIT_SYSTEMS = {
     "ENG": {
@@ -17,6 +18,7 @@ UNIT_SYSTEMS = {
         "force": "lbf",
         "specific_heat": "Btu/(lbm*degR)",
         "gas_constant": "Btu/(lbm*degR)",
+        "enthalpy_flow": "Btu/s",
     },
     "SI": {
         "temperature": "degK",
@@ -32,6 +34,7 @@ UNIT_SYSTEMS = {
         "force": "N",
         "specific_heat": "J/(kg*degK)",
         "gas_constant": "J/(kg*degK)",
+        "enthalpy_flow": "W",
     },
 }
 
@@ -43,6 +46,16 @@ STD_DAY = {
 MASS_FLOW_VEL_TO_FORCE = {
     "ENG": 1.0 / 32.174,
     "SI": 1.0,
+}
+
+ENTHALPY_FLOW_TO_POWER = {
+    "ENG": 1.4148532,
+    "SI": 1.0,
+}
+
+POWER_PER_RPM_TO_TORQUE = {
+    "ENG": 5252.113122032546,
+    "SI": 60.0 / (2.0 * math.pi),
 }
 
 

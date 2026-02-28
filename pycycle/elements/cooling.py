@@ -5,19 +5,22 @@ from pycycle.thermo.thermo import Thermo, ThermoAdd
 from pycycle.constants import ALLOWED_THERMOS, THERMO_DEFAULT_COMPOSITIONS
 from pycycle.flow_in import FlowIn
 from pycycle.element_base import Element
+from pycycle.unit_utils import get_unit
 
 
 class CombineCooling(om.ExplicitComponent):
 
     def initialize(self):
         self.options.declare('n_ins', types=int, desc='number of input flow')
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
     def setup(self):
         n_ins = self.options['n_ins']
+        unit_system = self.options['unit_system']
         for i in range(1,n_ins+1):
-            self.add_input('W_{}'.format(i), units='lbm/s')
+            self.add_input('W_{}'.format(i), units=get_unit('mass_flow', unit_system))
 
-        self.add_output('W_cool', units='lbm/s')
+        self.add_output('W_cool', units=get_unit('mass_flow', unit_system))
         self.declare_partials('W_cool', '*', val=1) #constant values
 
     def compute(self, inputs, outputs):
@@ -34,24 +37,26 @@ class CoolingCalcs(om.ExplicitComponent):
         self.options.declare('i_row', types=int, desc="row number")
         self.options.declare('T_safety', types=float, default=150., desc='safety factor applied') # units=degR
         self.options.declare('T_metal', types=float, default=2460., desc='safety factor applied') # units=degR
+        self.options.declare('unit_system', default='ENG', values=('ENG', 'SI'))
 
 
     def setup(self):
-        self.add_input('turb_pwr', val=1, units='Btu/s', desc='power produced by the whole turbine')
-        self.add_input('Pt_in', val=1, units='psi', desc='turbine inlet pressure') # note: NOT the pressure at the row. Across the whole turbine!
-        self.add_input('Pt_out', val=1, units='psi', desc='turbine exit pressure')
+        unit_system = self.options['unit_system']
+        self.add_input('turb_pwr', val=1, units=get_unit('enthalpy_flow', unit_system), desc='power produced by the whole turbine')
+        self.add_input('Pt_in', val=1, units=get_unit('pressure', unit_system), desc='turbine inlet pressure') # note: NOT the pressure at the row. Across the whole turbine!
+        self.add_input('Pt_out', val=1, units=get_unit('pressure', unit_system), desc='turbine exit pressure')
         self.add_input('x_factor', val=1, desc='technology factor. 1 is current technology, lower is more advanced technology')
-        self.add_input('W_primary', val=1, units='lbm/s', desc="flow into the row")
-        self.add_input('Tt_primary', val=1, units='degR', desc='total temperature of primary flow coming into the row')
-        self.add_input('Tt_cool', val=1, units='degR', desc='total temperature of cooling flow coming into the row')
-        self.add_input('ht_primary', val=1, units='Btu/lbm', desc='total enthalpy of primary flow coming into the row')
-        self.add_input('ht_cool', val=1, units='Btu/lbm', desc='total enthalpy of cooling flow coming into the row')
+        self.add_input('W_primary', val=1, units=get_unit('mass_flow', unit_system), desc="flow into the row")
+        self.add_input('Tt_primary', val=1, units=get_unit('temperature', unit_system), desc='total temperature of primary flow coming into the row')
+        self.add_input('Tt_cool', val=1, units=get_unit('temperature', unit_system), desc='total temperature of cooling flow coming into the row')
+        self.add_input('ht_primary', val=1, units=get_unit('enthalpy', unit_system), desc='total enthalpy of primary flow coming into the row')
+        self.add_input('ht_cool', val=1, units=get_unit('enthalpy', unit_system), desc='total enthalpy of cooling flow coming into the row')
 
-        self.add_output('W_cool', val=1, units='lbm/s', desc="flow requires to cool the turbine")
+        self.add_output('W_cool', val=1, units=get_unit('mass_flow', unit_system), desc="flow requires to cool the turbine")
         # not the same as the Pt_out thats an input, which is for the whole turbine
-        self.add_output('Pt_stage', val=1, lower=1e-5, units='psi', desc="exit total pressure of the row")
+        self.add_output('Pt_stage', val=1, lower=1e-5, units=get_unit('pressure', unit_system), desc="exit total pressure of the row")
 
-        self.add_output('ht_out', val=1, units='Btu/lbm', desc="exit total enthalpy")
+        self.add_output('ht_out', val=1, units=get_unit('enthalpy', unit_system), desc="exit total enthalpy")
 
         # integer math to so you get 1,1,2,2 for the rows of 2 stage machine
         self.i_stage = (((self.options['i_row'])//2) + 1)//self.options['n_stages']
@@ -205,7 +210,8 @@ class Row(om.Group):
         self.add_subsystem('cooling_calcs', CoolingCalcs(n_stages=self.options['n_stages'],
                                                          i_row=self.options['i_row'],
                                                          T_safety=self.options['T_safety'],
-                                                         T_metal=self.options['T_metal']),
+                                                         T_metal=self.options['T_metal'],
+                                                         unit_system=unit_system),
                           promotes_inputs=['Pt_in', 'Pt_out', 'W_primary', 'Tt_primary', 'Tt_cool', 'ht_primary', 'ht_cool', 'x_factor', 'turb_pwr'],
                           promotes_outputs=['W_cool'])
 
@@ -333,11 +339,11 @@ if __name__ == "__main__":
     prob = om.Problem()
     prob.model = TurbineCooling(n_stages=1)
 
-    prob.model.set_input_defaults('Fl_turb_I:tot:T', val=518., units='degR')
-    prob.model.set_input_defaults('Fl_turb_I:tot:P', val=1., units='lbf/inch**2')
-    prob.model.set_input_defaults('Fl_turb_I:stat:W', val= 1.0, units='lbm/s')
-    prob.model.set_input_defaults('Fl_turb_O:tot:P', val=1., units='lbf/inch**2')
-    prob.model.set_input_defaults('Fl_cool:tot:T', val=518., units='degR')
+    prob.model.set_input_defaults('Fl_turb_I:tot:T', val=518., units=get_unit('temperature', 'ENG'))
+    prob.model.set_input_defaults('Fl_turb_I:tot:P', val=1., units=get_unit('pressure', 'ENG'))
+    prob.model.set_input_defaults('Fl_turb_I:stat:W', val= 1.0, units=get_unit('mass_flow', 'ENG'))
+    prob.model.set_input_defaults('Fl_turb_O:tot:P', val=1., units=get_unit('pressure', 'ENG'))
+    prob.model.set_input_defaults('Fl_cool:tot:T', val=518., units=get_unit('temperature', 'ENG'))
 
     prob.setup(force_alloc_complex=True)
     prob.run_model()

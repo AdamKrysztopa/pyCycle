@@ -28,11 +28,11 @@ def run_electric(unit_system: str) -> dict[str, float]:
     prob.set_val('design.fan.PR', 1.2)
     prob.set_val('pwr_target', -3486.657, units='hp')
     prob.set_val('design.fan.eff', 0.96)
-    prob['design.balance.W'] = 200.0
+    prob.set_val('design.balance.W', 200.0, units='lbm/s')
 
     for pt in mp.od_pts:
         prob[f'{pt}.fan.PR'] = 1.2
-        prob[f'{pt}.balance.W'] = 406.790
+        prob.set_val(f'{pt}.balance.W', 406.790, units='lbm/s')
         prob[f'{pt}.balance.Nmech'] = 1.0
 
     prob.set_solver_print(level=-1)
@@ -62,17 +62,17 @@ def run_simple_turbojet(unit_system: str) -> dict[str, float]:
     prob.set_val('DESIGN.turb.eff', 0.86)
 
     prob['DESIGN.balance.FAR'] = 0.0175506829934
-    prob['DESIGN.balance.W'] = 168.453135137
+    prob.set_val('DESIGN.balance.W', 168.453135137, units='lbm/s')
     prob['DESIGN.balance.turb_PR'] = 4.46138725662
-    prob['DESIGN.fc.balance.Pt'] = 14.6955113159
-    prob['DESIGN.fc.balance.Tt'] = 518.665288153
+    prob.set_val('DESIGN.fc.balance.Pt', 14.6955113159, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 518.665288153, units='degR')
 
     for pt in mp.od_pts:
-        prob[f'{pt}.balance.W'] = 166.073
+        prob.set_val(f'{pt}.balance.W', 166.073, units='lbm/s')
         prob[f'{pt}.balance.FAR'] = 0.01680
-        prob[f'{pt}.balance.Nmech'] = 8197.38
-        prob[f'{pt}.fc.balance.Pt'] = 15.703
-        prob[f'{pt}.fc.balance.Tt'] = 558.31
+        prob.set_val(f'{pt}.balance.Nmech', 8197.38, units='rpm')
+        prob.set_val(f'{pt}.fc.balance.Pt', 15.703, units='psi')
+        prob.set_val(f'{pt}.fc.balance.Tt', 558.31, units='degR')
         prob[f'{pt}.turb.PR'] = 4.6690
 
     prob.set_solver_print(level=-1)
@@ -81,7 +81,7 @@ def run_simple_turbojet(unit_system: str) -> dict[str, float]:
     point = 'DESIGN'
     return {
         'Fn': _s(prob, f'{point}.perf.Fn', 'N' if unit_system == 'SI' else 'lbf'),
-        'TSFC': _s(prob, f'{point}.perf.TSFC', 'kg/N/s' if unit_system == 'SI' else 'lbm/lbf/h'),
+        'TSFC': _s(prob, f'{point}.perf.TSFC'),
         'OPR': _s(prob, f'{point}.perf.OPR'),
         'W': _s(prob, f'{point}.inlet.Fl_O:stat:W', 'kg/s' if unit_system == 'SI' else 'lbm/s'),
         'Tt': _s(prob, f'{point}.burner.Fl_O:tot:T', 'degK' if unit_system == 'SI' else 'degR'),
@@ -109,23 +109,23 @@ def run_multi_spool(unit_system: str) -> dict[str, float]:
     prob.set_val('DESIGN.pt.eff', 0.85)
 
     prob['DESIGN.balance.FAR'] = 0.02261
-    prob['DESIGN.balance.W'] = 10.76
+    prob.set_val('DESIGN.balance.W', 10.76, units='lbm/s')
     prob['DESIGN.balance.hpt_PR'] = 4.233
     prob['DESIGN.balance.lpt_PR'] = 1.979
     prob['DESIGN.balance.pt_PR'] = 4.919
-    prob['DESIGN.fc.balance.Pt'] = 5.666
-    prob['DESIGN.fc.balance.Tt'] = 440.0
+    prob.set_val('DESIGN.fc.balance.Pt', 5.666, units='psi')
+    prob.set_val('DESIGN.fc.balance.Tt', 440.0, units='degR')
 
     for pt in mp.od_pts:
         prob[f'{pt}.balance.FAR'] = 0.02135
-        prob[f'{pt}.balance.W'] = 10.775
-        prob[f'{pt}.balance.HP_Nmech'] = 14800.000
-        prob[f'{pt}.balance.IP_Nmech'] = 12000.000
+        prob.set_val(f'{pt}.balance.W', 10.775, units='lbm/s')
+        prob.set_val(f'{pt}.balance.HP_Nmech', 14800.000, units='rpm')
+        prob.set_val(f'{pt}.balance.IP_Nmech', 12000.000, units='rpm')
         prob[f'{pt}.hpt.PR'] = 4.233
         prob[f'{pt}.lpt.PR'] = 1.979
         prob[f'{pt}.pt.PR'] = 4.919
-        prob[f'{pt}.fc.balance.Pt'] = 5.666
-        prob[f'{pt}.fc.balance.Tt'] = 440.0
+        prob.set_val(f'{pt}.fc.balance.Pt', 5.666, units='psi')
+        prob.set_val(f'{pt}.fc.balance.Tt', 440.0, units='degR')
         prob[f'{pt}.nozzle.PR'] = 1.1
 
     prob.set_solver_print(level=-1)
